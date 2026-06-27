@@ -319,6 +319,139 @@ button {
 .rank-name  { flex: 1; font-size: 0.85rem; color: var(--text-primary); }
 .rank-score { font-size: 0.95rem; color: var(--accent-gold-bright); font-weight: bold; font-family: var(--font-ui); }
 
+/* ===== HEADER CENTER ===== */
+#header-center {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+
+#restart-btn {
+  font-size: 0.55rem; padding: 3px 8px;
+  border-color: var(--accent-red); color: var(--accent-red);
+  background: rgba(204,34,51,0.08); letter-spacing: 0.05em;
+  border-radius: 3px;
+}
+#restart-btn:hover { background: rgba(204,34,51,0.25); }
+
+/* ===== TITLE SCREEN ===== */
+#title-screen {
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse at center top, #1e0a08 0%, #0d0a07 60%);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+}
+
+#title-box {
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  padding: 40px 36px;
+  background: var(--stone-dark);
+  border: 2px solid var(--stone-border);
+  border-radius: 4px;
+  min-width: 280px;
+  box-shadow: 0 0 60px rgba(212,160,18,0.2), inset 0 0 40px rgba(0,0,0,0.6);
+  animation: fadeInUp 0.4s ease;
+  position: relative;
+}
+
+#title-box::before {
+  content: '✦ ─────────────── ✦';
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  color: var(--stone-border); font-size: 0.6rem; white-space: nowrap;
+}
+#title-box::after {
+  content: '✦ ─────────────── ✦';
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  color: var(--stone-border); font-size: 0.6rem; white-space: nowrap;
+}
+
+#title-logo {
+  font-size: 3.5rem;
+  filter: drop-shadow(0 0 16px rgba(212,160,18,0.8));
+  animation: titleFloat 3s ease-in-out infinite;
+}
+
+@keyframes titleFloat {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+#title-name {
+  font-size: 1.6rem; font-weight: bold; text-align: center; line-height: 1.25;
+  color: var(--accent-gold-bright);
+  text-shadow: 0 0 16px rgba(212,160,18,0.9), 0 2px 4px rgba(0,0,0,0.8);
+  letter-spacing: 0.12em;
+}
+
+#title-sub {
+  font-size: 0.72rem; color: var(--text-dim);
+  letter-spacing: 0.12em; font-family: var(--font-ui);
+}
+
+#start-btn {
+  width: 100%; padding: 12px;
+  background: rgba(212,160,18,0.15);
+  border: 1px solid var(--accent-gold);
+  color: var(--accent-gold-bright);
+  font-size: 1rem; letter-spacing: 0.12em;
+  border-radius: 3px;
+  animation: startPulse 2s ease-in-out infinite;
+}
+#start-btn:hover { background: rgba(212,160,18,0.35); }
+
+@keyframes startPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(212,160,18,0.3); }
+  50%       { box-shadow: 0 0 20px rgba(212,160,18,0.7); }
+}
+
+#title-ranking-btn {
+  width: 100%; padding: 10px;
+  background: rgba(0,0,0,0.2);
+  border-color: var(--stone-border);
+  color: var(--text-dim);
+}
+#title-ranking-btn:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+
+/* ===== TITLE BTN in gameover ===== */
+#title-btn {
+  width: 100%; padding: 10px;
+  background: rgba(0,0,0,0.2);
+  border-color: var(--stone-border);
+  color: var(--text-dim);
+}
+#title-btn:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+
+/* ===== CONFIRM DIALOG ===== */
+#confirm-screen {
+  position: fixed; inset: 0;
+  background: rgba(13,10,7,0.88);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 150; backdrop-filter: blur(3px);
+}
+#confirm-box {
+  background: var(--stone-dark);
+  border: 2px solid var(--stone-border);
+  border-radius: 4px;
+  padding: 28px 32px;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  min-width: 260px;
+  box-shadow: 0 0 40px rgba(204,34,51,0.2);
+  animation: fadeInUp 0.25s ease;
+}
+#confirm-title { font-size: 1.1rem; color: var(--accent-red); letter-spacing: 0.1em; }
+#confirm-msg   { font-size: 0.8rem; color: var(--text-dim); text-align: center; line-height: 1.6; }
+#confirm-buttons { display: flex; gap: 10px; width: 100%; }
+#confirm-yes {
+  flex: 1; padding: 10px;
+  background: rgba(204,34,51,0.15);
+  border-color: var(--accent-red); color: #ff6677;
+}
+#confirm-yes:hover { background: rgba(204,34,51,0.35); }
+#confirm-no {
+  flex: 1; padding: 10px;
+  background: rgba(0,0,0,0.2);
+  border-color: var(--stone-border); color: var(--text-dim);
+}
+#confirm-no:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+
 /* ===== CHAIN POPUP ===== */
 #chain-popup {
   position: fixed; top: 45%; left: 50%;
