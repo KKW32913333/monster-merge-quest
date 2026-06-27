@@ -517,6 +517,13 @@ function init() {
   currentIdx = randomDropIdx();
   nextIdx    = randomDropIdx();
   drawNextMonster();
+
+  // 物理エンジンは一旦止める（タイトル画面中は動かさない）
+  Runner.stop(runner);
+
+  // タイトル画面を表示
+  document.getElementById('title-screen').classList.remove('hidden');
+
   requestAnimationFrame(gameLoop);
 }
 
@@ -949,12 +956,71 @@ function setupInput() {
   }, { passive: false });
 }
 
+// ===== タイトル画面 =====
+function showTitle() {
+  // ゲーム状態リセット
+  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0;
+  particles = []; mergeQueue = []; isTouching = false;
+  document.getElementById('score-display').textContent = '0';
+  document.getElementById('chain-display').textContent = 'x1';
+  document.getElementById('gameover-screen').classList.add('hidden');
+  document.getElementById('ranking-screen').classList.add('hidden');
+  for (const m of bodies) World.remove(world, m.body);
+  bodies = [];
+  rebuildWalls();
+  Runner.stop(runner);
+  document.getElementById('title-screen').classList.remove('hidden');
+}
+
+function startGame() {
+  document.getElementById('title-screen').classList.add('hidden');
+  Runner.run(runner, engine);
+  currentIdx = randomDropIdx(); nextIdx = randomDropIdx();
+  drawNextMonster();
+}
+
+// ===== 確認ダイアログ =====
+function showConfirm(message, onYes) {
+  // 既存を削除
+  const ex = document.getElementById('confirm-screen');
+  if (ex) ex.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'confirm-screen';
+  overlay.innerHTML = `
+    <div id="confirm-box">
+      <div id="confirm-title">⚠️ 確認</div>
+      <div id="confirm-msg">${message}</div>
+      <div id="confirm-buttons">
+        <button id="confirm-yes">はい</button>
+        <button id="confirm-no">キャンセル</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('app').appendChild(overlay);
+
+  document.getElementById('confirm-yes').addEventListener('click', () => {
+    overlay.remove();
+    onYes();
+  });
+  document.getElementById('confirm-no').addEventListener('click', () => {
+    overlay.remove();
+  });
+}
+
 // ===== ゲームオーバー =====
 function triggerGameOver() {
   if (isGameOver) return;
   isGameOver = true;
   Runner.stop(runner);
   document.getElementById('final-score').textContent = score;
+  // スコア登録欄をリセット
+  document.getElementById('gameover-name-section').innerHTML = `
+    <input id="player-name" type="text" placeholder="冒険者の名前..." maxlength="12">
+    <button id="submit-score-btn">殿堂入り</button>
+  `;
+  // 登録ボタンの再バインド
+  document.getElementById('submit-score-btn').addEventListener('click', submitScoreHandler);
   document.getElementById('gameover-screen').classList.remove('hidden');
 }
 
@@ -972,30 +1038,29 @@ function restartGame() {
   drawNextMonster();
 }
 
-document.getElementById('retry-btn').addEventListener('click', restartGame);
-document.getElementById('ranking-btn').addEventListener('click', () => {
-  document.getElementById('gameover-screen').classList.add('hidden'); showRanking();
-});
-document.getElementById('close-ranking-btn').addEventListener('click', () => {
-  document.getElementById('ranking-screen').classList.add('hidden');
-});
-document.getElementById('submit-score-btn').addEventListener('click', () => {
+// ===== スコア登録ハンドラ =====
+function submitScoreHandler() {
   const name = document.getElementById('player-name').value.trim() || '名無し';
   if (window.submitScore) {
     window.submitScore(name, score).then(() => {
       document.getElementById('gameover-name-section').innerHTML =
         '<div style="color:#44aa55;font-size:0.85rem;">✅ 殿堂入り！</div>';
+      // 2秒後にタイトルへ
+      setTimeout(() => showTitle(), 2000);
     });
   }
-});
+}
 
-function showRanking() {
+// ===== ボタンバインドはDOMContentLoaded内で行う =====
+
+function showRanking(fromTitle = false) {
   document.getElementById('ranking-screen').classList.remove('hidden');
   document.getElementById('ranking-list').innerHTML =
     '<div style="color:#7a6040;text-align:center;padding:20px;">読み込み中...</div>';
   if (window.loadRanking) { window.loadRanking().then(entries => renderRanking(entries)); }
   else { renderRanking([]); }
 }
+
 function renderRanking(entries) {
   const list = document.getElementById('ranking-list');
   if (!entries || !entries.length) {
@@ -1023,4 +1088,41 @@ function adjustColor(hex, n) {
   return `rgb(${r},${g},${b})`;
 }
 
-window.addEventListener('DOMContentLoaded', init);
+// ===== 起動 =====
+window.addEventListener('DOMContentLoaded', () => {
+  init();
+
+  // ===== ボタン =====
+  document.getElementById('start-btn').addEventListener('click', startGame);
+
+  document.getElementById('title-ranking-btn').addEventListener('click', () => {
+    showRanking(true);
+  });
+
+  document.getElementById('retry-btn').addEventListener('click', () => {
+    document.getElementById('gameover-screen').classList.add('hidden');
+    restartGame();
+  });
+
+  document.getElementById('ranking-btn').addEventListener('click', () => {
+    document.getElementById('gameover-screen').classList.add('hidden');
+    showRanking(false);
+  });
+
+  document.getElementById('title-btn').addEventListener('click', () => {
+    showTitle();
+  });
+
+  document.getElementById('close-ranking-btn').addEventListener('click', () => {
+    document.getElementById('ranking-screen').classList.add('hidden');
+    showTitle();
+  });
+
+  document.getElementById('restart-btn').addEventListener('click', () => {
+    if (isGameOver) { restartGame(); return; }
+    showConfirm('現在のゲームを終了して<br>最初からやり直しますか？', () => {
+      restartGame();
+    });
+  });
+});
+
