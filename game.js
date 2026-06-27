@@ -711,11 +711,11 @@ function renderGame() {
     const cx  = Math.max(r + 5, Math.min(W - r - 5, mouseX));
     const previewY = 55;
 
-    // 点線ガイド
+    // 点線ガイド（明るい青）
     gameCtx.save();
-    gameCtx.strokeStyle = 'rgba(212,160,18,0.25)';
+    gameCtx.strokeStyle = 'rgba(42,125,225,0.3)';
     gameCtx.setLineDash([4, 6]);
-    gameCtx.lineWidth = 1;
+    gameCtx.lineWidth = 1.5;
     gameCtx.beginPath(); gameCtx.moveTo(cx, previewY + r); gameCtx.lineTo(cx, H);
     gameCtx.stroke();
     gameCtx.restore();
@@ -846,9 +846,17 @@ function spawnBlastWave(x, y, newIdx) {
 }
 
 function spawnEmbers() {
-  const colors = ['#ff4400','#ff8800','#ffcc00','#ff6600','#dd2200'];
+  // 明るいファンタジーの輝き（金・白・水色）
+  const colors = ['#ffd700','#fff176','#aef2ff','#ffb3c6','#b3e5fc'];
   for (let i = 0; i < 20; i++) {
-    embers.push({ x:Math.random()*420, y:Math.random()*600, vx:(Math.random()-0.5)*0.4, vy:-0.3-Math.random()*0.5, size:1+Math.random()*2, color:colors[Math.floor(Math.random()*colors.length)], life:Math.random(), phase:Math.random()*Math.PI*2 });
+    embers.push({
+      x: Math.random()*420, y: Math.random()*600,
+      vx: (Math.random()-0.5)*0.5,
+      vy: -0.4 - Math.random()*0.6,
+      size: 1 + Math.random()*2.5,
+      color: colors[Math.floor(Math.random()*colors.length)],
+      life: Math.random(), phase: Math.random()*Math.PI*2
+    });
   }
 }
 
@@ -861,14 +869,14 @@ function updateChainDisplay(mult) {
 function showChainPopup(mult) {
   const ex = document.getElementById('chain-popup'); if (ex) ex.remove();
   const el = document.createElement('div'); el.id = 'chain-popup';
-  el.textContent = `⚔️ COMBO x${mult}!`;
+  el.textContent = `✨ COMBO x${mult}!`;
   document.getElementById('app').appendChild(el);
   setTimeout(() => el.remove(), 750);
 }
 function showLevelUp(name) {
   const ex = document.getElementById('levelup-popup'); if (ex) ex.remove();
   const el = document.createElement('div'); el.id = 'levelup-popup';
-  el.innerHTML = `<span style="font-size:0.9rem">${name} 召喚！</span>`;
+  el.innerHTML = `⭐ <span style="font-size:0.9rem">${name} 登場！</span>`;
   document.getElementById('app').appendChild(el);
   setTimeout(() => el.remove(), 900);
 }

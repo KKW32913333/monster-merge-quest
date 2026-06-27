@@ -1,19 +1,19 @@
 {
   "name": "Monster Merge Quest",
   "short_name": "MonsterMerge",
-  "description": "ダーク・ファンタジーのモンスター合体パズルゲーム",
-  "start_url": "./index.html?v=2",
+  "description": "モンスターを合体・進化させる落下パズル冒険ゲーム！",
+  "start_url": "./index.html?v=3",
   "display": "fullscreen",
   "orientation": "portrait",
-  "background_color": "#12122e",
-  "theme_color": "#12122e",
+  "background_color": "#5bb8f5",
+  "theme_color": "#5bb8f5",
   "lang": "ja",
   "icons": [
-    { "src": "icon-58.png?v=2",   "sizes": "58x58",     "type": "image/png" },
-    { "src": "icon-80.png?v=2",   "sizes": "80x80",     "type": "image/png" },
-    { "src": "icon-87.png?v=2",   "sizes": "87x87",     "type": "image/png" },
-    { "src": "icon-120.png?v=2",  "sizes": "120x120",   "type": "image/png" },
-    { "src": "icon-180.png?v=2",  "sizes": "180x180",   "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-1024.png?v=2", "sizes": "1024x1024", "type": "image/png", "purpose": "any maskable" }
+    { "src": "icon-58.png?v=3",   "sizes": "58x58",     "type": "image/png" },
+    { "src": "icon-80.png?v=3",   "sizes": "80x80",     "type": "image/png" },
+    { "src": "icon-87.png?v=3",   "sizes": "87x87",     "type": "image/png" },
+    { "src": "icon-120.png?v=3",  "sizes": "120x120",   "type": "image/png" },
+    { "src": "icon-180.png?v=3",  "sizes": "180x180",   "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-1024.png?v=3", "sizes": "1024x1024", "type": "image/png", "purpose": "any maskable" }
   ]
 }
