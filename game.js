@@ -1089,7 +1089,8 @@ function adjustColor(hex, n) {
 }
 
 // ===== 起動 =====
-window.addEventListener('DOMContentLoaded', () => {
+// bodyの末尾で読み込まれるため、DOM は既に存在している
+(function () {
   init();
 
   // ===== ボタン =====
@@ -1124,5 +1125,5 @@ window.addEventListener('DOMContentLoaded', () => {
       restartGame();
     });
   });
-});
+})();
 
