@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚔️ Monster Merge Quest</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script type="module" src="firebase.js"></script>
+</head>
+<body>
+  <!-- 松明エフェクト -->
+  <div class="torch torch-left">🔥</div>
+  <div class="torch torch-right">🔥</div>
+
+  <div id="app">
+    <header id="game-header">
+      <div id="score-panel">
+        <div class="score-block">
+          <span class="score-label">💰 GOLD</span>
+          <span id="score-display">0</span>
+        </div>
+        <div class="score-block">
+          <span class="score-label">👑 BEST</span>
+          <span id="best-display">0</span>
+        </div>
+        <div class="score-block chain-block">
+          <span class="score-label">⚔️ COMBO</span>
+          <span id="chain-display">x1</span>
+        </div>
+      </div>
+      <h1 id="game-title">⚔️ MONSTER<br>MERGE</h1>
+      <div id="next-panel">
+        <span class="score-label">NEXT</span>
+        <canvas id="next-canvas" width="60" height="60"></canvas>
+      </div>
+    </header>
+
+    <div id="game-container">
+      <div id="danger-line"></div>
+      <!-- ダンジョン装飾 -->
+      <div class="dungeon-left"></div>
+      <div class="dungeon-right"></div>
+      <canvas id="game-canvas"></canvas>
+      <canvas id="effect-canvas"></canvas>
+    </div>
+
+    <div id="evolution-bar">
+      <div class="evo-label">進化 →</div>
+      <div id="evo-list"></div>
+    </div>
+
+    <!-- ゲームオーバー -->
+    <div id="gameover-screen" class="hidden">
+      <div id="gameover-box">
+        <div id="gameover-title">💀 DEFEATED</div>
+        <div id="final-score-label">GOLD EARNED</div>
+        <div id="final-score">0</div>
+        <div id="gameover-name-section">
+          <input id="player-name" type="text" placeholder="冒険者の名前..." maxlength="12">
+          <button id="submit-score-btn">殿堂入り</button>
+        </div>
+        <button id="retry-btn">⚔️ 再挑戦</button>
+        <button id="ranking-btn">🏆 殿堂を見る</button>
+      </div>
+    </div>
+
+    <!-- ランキング -->
+    <div id="ranking-screen" class="hidden">
+      <div id="ranking-box">
+        <div id="ranking-title">🏆 冒険者殿堂</div>
+        <div id="ranking-list"></div>
+        <button id="close-ranking-btn">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
