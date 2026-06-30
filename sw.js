@@ -1,7 +1,7 @@
 // ===== SERVICE WORKER =====
 // Monster Merge Quest — オフライン対応
 
-const CACHE_NAME = 'monster-merge-v1';
+const CACHE_NAME = 'monster-merge-v2';
 
 // キャッシュするファイル一覧
 const ASSETS = [
@@ -11,8 +11,12 @@ const ASSETS = [
   './game.js',
   './firebase.js',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
+  './icon-58.png',
+  './icon-80.png',
+  './icon-87.png',
+  './icon-120.png',
+  './icon-180.png',
+  './icon-1024.png',
   'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js',
 ];
 
