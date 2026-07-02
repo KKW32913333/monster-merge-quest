@@ -3,29 +3,44 @@
 
 const { Engine, Runner, Bodies, Body, World, Events } = Matter;
 
+// ===== モンスター画像読み込みヘルパー =====
+// 画像が用意されている段階は img を優先描画し、
+// 画像が無い段階（フェニックス）は従来通り draw 関数で描画する
+function loadMonsterImg(src) {
+  const img = new Image();
+  img.onload = () => {
+    // ゲーム盤面は毎フレーム再描画されるが、進化バー／NEXT表示は
+    // 静的キャンバスなので画像読込完了時に再描画して反映する
+    if (typeof buildEvolutionBar === 'function' && document.getElementById('evo-list')) buildEvolutionBar();
+    if (typeof drawNextMonster === 'function' && nextCtx) drawNextMonster();
+  };
+  img.src = src;
+  return img;
+}
+
 // ===== モンスター定義 =====
-// draw関数でCanvas描画するカスタムアート
+// img があれば画像描画、無ければ draw 関数でCanvas描画（フォールバック）
 const MONSTERS = [
   { name: 'スライム',     radius: 12,  color: '#33bb44', score: 1,  magic: '#88ffaa',
-    draw: drawSlime },
+    img: loadMonsterImg('monster-slime.png'), draw: drawSlime },
   { name: 'コウモリ',     radius: 18,  color: '#5533aa', score: 3,  magic: '#bb88ff',
-    draw: drawBat },
-  { name: 'ゴブリン',     radius: 26,  color: '#2d7a2d', score: 6,  magic: '#66ff66',
-    draw: drawGoblin },
+    img: loadMonsterImg('monster-bat.png'), draw: drawBat },
+  { name: 'ピクシー',     radius: 26,  color: '#2d7a2d', score: 6,  magic: '#ff99dd',
+    img: loadMonsterImg('monster-pixie.png'), draw: drawGoblin },
   { name: 'スケルトン',   radius: 34,  color: '#c8c8c8', score: 10, magic: '#ffffff',
-    draw: drawSkeleton },
-  { name: 'オーク',       radius: 44,  color: '#5a3010', score: 15, magic: '#ff9933',
-    draw: drawOrc },
+    img: loadMonsterImg('monster-skeleton.png'), draw: drawSkeleton },
+  { name: 'ケンタウルス', radius: 44,  color: '#5a3010', score: 15, magic: '#88cc44',
+    img: loadMonsterImg('monster-centaur.png'), draw: drawOrc },
   { name: 'ミノタウロス', radius: 54,  color: '#3d1f0a', score: 21, magic: '#ff6622',
-    draw: drawMinotaur },
+    img: loadMonsterImg('monster-minotaur.png'), draw: drawMinotaur },
   { name: '魔女',         radius: 66,  color: '#330066', score: 28, magic: '#cc44ff',
-    draw: drawWitch },
+    img: loadMonsterImg('monster-witch.png'), draw: drawWitch },
   { name: 'フェニックス', radius: 80,  color: '#cc3300', score: 36, magic: '#ff6600',
     draw: drawPhoenix },
-  { name: 'リッチ王',     radius: 95,  color: '#664400', score: 45, magic: '#ffcc00',
-    draw: drawLich },
+  { name: 'ドラゴン',     radius: 95,  color: '#664400', score: 45, magic: '#3388ff',
+    img: loadMonsterImg('monster-dragon.png'), draw: drawLich },
   { name: '魔王',         radius: 112, color: '#440011', score: 55, magic: '#ff0033',
-    draw: drawDemonLord },
+    img: loadMonsterImg('monster-demonlord.png'), draw: drawDemonLord },
 ];
 
 // ===================================================
@@ -665,6 +680,17 @@ function checkDanger() {
   }
 }
 
+// ===== モンスターアート描画（画像優先・未読込/フェニックスはCanvas描画） =====
+function renderMonsterArt(ctx, mon, r) {
+  if (mon.img && mon.img.complete && mon.img.naturalWidth > 0) {
+    // 画像を円形クリップいっぱいに描画（少し大きめにして端の隙間を防止）
+    const d = r * 2.16;
+    ctx.drawImage(mon.img, -d/2, -d/2, d, d);
+  } else if (mon.draw) {
+    mon.draw(ctx, r);
+  }
+}
+
 // ===== モンスター描画ヘルパー =====
 function drawMonsterAt(ctx, idx, x, y, angle) {
   const mon = MONSTERS[idx];
@@ -682,10 +708,10 @@ function drawMonsterAt(ctx, idx, x, y, angle) {
   // クリップ円
   ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.clip();
 
-  // カスタム描画（角度反映）
+  // アート描画（画像は角度反映しない／カスタム描画は角度反映）
   ctx.save();
-  ctx.rotate(angle);
-  mon.draw(ctx, r);
+  if (!(mon.img && mon.img.complete && mon.img.naturalWidth > 0)) ctx.rotate(angle);
+  renderMonsterArt(ctx, mon, r);
   ctx.restore();
 
   ctx.restore();
@@ -898,7 +924,7 @@ function drawNextMonster() {
   nextCtx.save();
   nextCtx.translate(cx, cy);
   nextCtx.beginPath(); nextCtx.arc(0, 0, r, 0, Math.PI*2); nextCtx.clip();
-  mon.draw(nextCtx, r);
+  renderMonsterArt(nextCtx, mon, r);
   nextCtx.restore();
 
   // 縁取り
@@ -917,7 +943,7 @@ function buildEvolutionBar() {
     const r = Math.min(mon.radius*0.5, 12), cx = 16, cy = 16;
     ctx.save(); ctx.translate(cx, cy);
     ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.clip();
-    mon.draw(ctx, r);
+    renderMonsterArt(ctx, mon, r);
     ctx.restore();
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
     ctx.strokeStyle = mon.magic + '88'; ctx.lineWidth = 1; ctx.stroke();
