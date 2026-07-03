@@ -571,8 +571,8 @@ function resizeCanvas() {
 
 // ===== 物理エンジン =====
 function buildPhysics() {
-  // gravity をさらに小さくし、落下速度を緩やかに調整
-  engine = Engine.create({ gravity: { y: 0.35 } });
+  // gravity をさらに緩やかに調整（体感速度を抑える）
+  engine = Engine.create({ gravity: { y: 0.25 } });
   world  = engine.world;
   runner = Runner.create();
   Runner.run(runner, engine);
@@ -660,7 +660,7 @@ function removeMonster(m) {
 function addMonster(idx, x, y, fromMerge = false) {
   const r = MONSTERS[idx].radius;
   const body = Bodies.circle(x, y, r, {
-    restitution: 0.25, friction: 0.45, frictionAir: 0.03, label: 'monster',
+    restitution: 0.25, friction: 0.45, frictionAir: 0.045, label: 'monster',
   });
   if (fromMerge) Body.setVelocity(body, { x: 0, y: -1.5 });
   World.add(world, body);
@@ -1113,6 +1113,7 @@ function submitScoreHandler() {
 // ===== ボタンバインドはDOMContentLoaded内で行う =====
 
 function showRanking(fromTitle = false) {
+  if (fromTitle) document.getElementById('title-screen').classList.add('hidden');
   document.getElementById('ranking-screen').classList.remove('hidden');
   document.getElementById('ranking-list').innerHTML =
     '<div style="color:#7a6040;text-align:center;padding:20px;">読み込み中...</div>';
@@ -1182,6 +1183,13 @@ function adjustColor(hex, n) {
     if (isGameOver) { restartGame(); return; }
     showConfirm('現在のゲームを終了して<br>最初からやり直しますか？', () => {
       restartGame();
+    });
+  });
+
+  document.getElementById('home-btn').addEventListener('click', () => {
+    if (isGameOver) { showTitle(); return; }
+    showConfirm('現在のゲームを終了して<br>タイトルに戻りますか？', () => {
+      showTitle();
     });
   });
 
