@@ -84,6 +84,10 @@
         <span class="score-label">NEXT</span>
         <canvas id="next-canvas" width="60" height="60"></canvas>
       </div>
+      <div id="hold-panel" title="ホールド（現在のモンスターをキープ）">
+        <span class="score-label">HOLD</span>
+        <canvas id="hold-canvas" width="60" height="60"></canvas>
+      </div>
     </header>
 
     <div id="game-container">
@@ -106,8 +110,17 @@
         <div id="title-logo"><img src="icon-180.png" alt="Monster Merge Quest"></div>
         <div id="title-name">MONSTER<br>MERGE QUEST</div>
         <div id="title-sub">モンスター合体パズル冒険！</div>
+
+        <div id="mission-panel">
+          <div id="mission-header">📋 本日のミッション</div>
+          <div id="mission-desc">-</div>
+          <div id="mission-bar"><div id="mission-bar-fill"></div></div>
+          <div id="mission-status">0/0</div>
+        </div>
+
         <button id="start-btn">⚔️ 冒険を始める！</button>
         <button id="title-ranking-btn">🏆 殿堂ランキング</button>
+        <button id="difficulty-btn">🎚️ 難易度: <span id="difficulty-label">中級</span></button>
         <button id="theme-btn">🎨 テーマを選ぶ</button>
       </div>
     </div>
@@ -160,6 +173,28 @@
           </button>
         </div>
         <button id="theme-close-btn">閉じる</button>
+      </div>
+    </div>
+
+    <!-- 難易度選択 -->
+    <div id="difficulty-screen" class="hidden">
+      <div id="difficulty-box">
+        <div id="difficulty-title">🎚️ 難易度を選ぶ</div>
+        <div id="difficulty-list">
+          <button class="difficulty-option" data-difficulty-id="easy">
+            <span>初級</span>
+            <span class="difficulty-option-desc">ゆっくり落下・出現モンスターも控えめ</span>
+          </button>
+          <button class="difficulty-option" data-difficulty-id="normal">
+            <span>中級</span>
+            <span class="difficulty-option-desc">標準的な速度とバランス</span>
+          </button>
+          <button class="difficulty-option" data-difficulty-id="hard">
+            <span>上級</span>
+            <span class="difficulty-option-desc">落下が速く、強いモンスターも出現。高スコア倍率</span>
+          </button>
+        </div>
+        <button id="difficulty-close-btn">閉じる</button>
       </div>
     </div>
   </div>

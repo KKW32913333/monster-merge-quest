@@ -43,10 +43,76 @@ const MONSTERS = [
     img: loadMonsterImg('monster-demonlord.png'), draw: drawDemonLord },
 ];
 
+// ===== 特殊モンスター =====
+const SPECIAL_MONSTERS = {
+  bomb: {
+    name: '爆弾スライム', radius: 30, color: '#1a1a1a', magic: '#ff5500', score: 0,
+    draw: drawBombMonster, specialType: 'bomb',
+  },
+  rainbow: {
+    name: '虹スライム', radius: 30, color: '#ffffff', magic: '#ffffff', score: 0,
+    draw: drawRainbowMonster, specialType: 'rainbow',
+  },
+};
+
+// idxが通常の階層番号でも特殊モンスターのキー('bomb'/'rainbow')でも解決できるヘルパー
+function monsterDef(idx) {
+  return (typeof idx === 'string') ? SPECIAL_MONSTERS[idx] : MONSTERS[idx];
+}
+
 // ===================================================
 // ===== カスタムモンスター描画関数 (ctx, r) =====
 // ctx は translate済み（0,0 が中心）
 // ===================================================
+
+function drawBombMonster(ctx, r) {
+  const s = r;
+  const bg = ctx.createRadialGradient(-s*0.2, -s*0.2, s*0.1, 0, 0, s);
+  bg.addColorStop(0, '#555555'); bg.addColorStop(0.6, '#1c1c1c'); bg.addColorStop(1, '#000000');
+  ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI*2); ctx.fillStyle = bg; ctx.fill();
+  // 導火線
+  ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = s*0.1; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, -s*0.92); ctx.quadraticCurveTo(s*0.35, -s*1.25, s*0.18, -s*1.5); ctx.stroke();
+  // 火花
+  ctx.fillStyle = '#ffdd33'; ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.arc(s*0.18, -s*1.5, s*0.14, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+  // 顔（怒った目）
+  ctx.fillStyle = '#ff3300'; ctx.shadowColor = '#ff5500'; ctx.shadowBlur = 6;
+  ctx.beginPath(); ctx.ellipse(-s*0.22, -s*0.05, s*0.13, s*0.09, -0.2, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( s*0.22, -s*0.05, s*0.13, s*0.09,  0.2, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+  // 口
+  ctx.strokeStyle = '#ff5500'; ctx.lineWidth = s*0.06;
+  ctx.beginPath(); ctx.arc(0, s*0.18, s*0.2, 0.15, Math.PI - 0.15); ctx.stroke();
+  // 光沢
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.beginPath(); ctx.ellipse(-s*0.25, -s*0.35, s*0.28, s*0.16, -0.4, 0, Math.PI*2); ctx.fill();
+}
+
+function drawRainbowMonster(ctx, r) {
+  const s = r;
+  const colors = ['#ff4d4d','#ff9d4d','#ffe14d','#6fdc6f','#4da6ff','#a366ff'];
+  for (let i = 0; i < colors.length; i++) {
+    const a0 = -Math.PI/2 + (i/colors.length)*Math.PI*2;
+    const a1 = -Math.PI/2 + ((i+1)/colors.length)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, s, a0, a1); ctx.closePath();
+    ctx.fillStyle = colors[i]; ctx.fill();
+  }
+  // 白いつや（シャボン玉っぽく）
+  const glow = ctx.createRadialGradient(-s*0.2, -s*0.3, s*0.1, 0, 0, s);
+  glow.addColorStop(0, 'rgba(255,255,255,0.65)');
+  glow.addColorStop(0.5, 'rgba(255,255,255,0.15)');
+  glow.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI*2); ctx.fillStyle = glow; ctx.fill();
+  // 顔
+  ctx.fillStyle = '#333';
+  ctx.beginPath(); ctx.arc(-s*0.22, -s*0.02, s*0.09, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( s*0.22, -s*0.02, s*0.09, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#333'; ctx.lineWidth = s*0.05;
+  ctx.beginPath(); ctx.arc(0, s*0.12, s*0.16, 0.2, Math.PI - 0.2); ctx.stroke();
+}
+
 
 function drawSlime(ctx, r) {
   // ぷよぷよした体
@@ -512,15 +578,40 @@ let mergeQueue   = [];
 let dangerFrames = 0;
 let mergeGraceUntil = 0; // この時刻までは合体直後の判定猶予として危険判定を停止
 
+// ===== 難易度設定 =====
+const DIFFICULTIES = {
+  easy:   { label: '初級', gravity: 0.24, frictionAir: 0.05,  dropPool: 4, scoreMult: 0.8 },
+  normal: { label: '中級', gravity: 0.32, frictionAir: 0.035, dropPool: 5, scoreMult: 1.0 },
+  hard:   { label: '上級', gravity: 0.44, frictionAir: 0.022, dropPool: 6, scoreMult: 1.3 },
+};
+let currentDifficulty = localStorage.getItem('monsterMergeDifficulty') || 'normal';
+
+// ===== ホールド機能 =====
+let heldIdx  = null;
+let canHold  = true;
+let holdCanvas, holdCtx;
+
+// ===== デイリーミッション =====
+const MISSION_POOL = [
+  { id: 'merge_skeleton', desc: 'スケルトンを5体誕生させよう', target: 5,    trackIdx: 3 },
+  { id: 'merge_witch',    desc: '魔女を3体誕生させよう',       target: 3,    trackIdx: 6 },
+  { id: 'reach_dragon',   desc: 'ドラゴンを1体誕生させよう',     target: 1,    trackIdx: 8 },
+  { id: 'score_3000',     desc: '1プレイで3000ゴールド以上稼ごう', target: 3000, trackType: 'score' },
+  { id: 'combo_4',        desc: 'コンボx4以上を1回出そう',       target: 1,    trackType: 'combo', comboReq: 4 },
+];
+let missionState = null;
+
 // ===== 初期化 =====
 function init() {
   gameCanvas   = document.getElementById('game-canvas');
   effectCanvas = document.getElementById('effect-canvas');
   nextCanvas   = document.getElementById('next-canvas');
+  holdCanvas   = document.getElementById('hold-canvas');
   containerEl  = document.getElementById('game-container');
   gameCtx      = gameCanvas.getContext('2d');
   effectCtx    = effectCanvas.getContext('2d');
   nextCtx      = nextCanvas.getContext('2d');
+  holdCtx      = holdCanvas.getContext('2d');
 
   // NEXT表示キャンバスもDPR倍の解像度にして高精細化（表示サイズは60x60のまま）
   const nextCssSize = 60;
@@ -530,12 +621,21 @@ function init() {
   nextCanvas.style.height = nextCssSize + 'px';
   nextCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
+  // HOLD表示キャンバスも同様にDPR対応
+  holdCanvas.width  = nextCssSize * DPR;
+  holdCanvas.height = nextCssSize * DPR;
+  holdCanvas.style.width  = nextCssSize + 'px';
+  holdCanvas.style.height = nextCssSize + 'px';
+  holdCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
   buildPhysics();
   setupInput();
   buildEvolutionBar();
   spawnEmbers();
+  initMission();
+  initDifficultyUI();
 
   bestScore = parseInt(localStorage.getItem('monsterMergeBest') || '0');
   document.getElementById('best-display').textContent = bestScore;
@@ -543,6 +643,7 @@ function init() {
   currentIdx = randomDropIdx();
   nextIdx    = randomDropIdx();
   drawNextMonster();
+  drawHoldMonster();
 
   // 物理エンジンは一旦止める（タイトル画面中は動かさない）
   Runner.stop(runner);
@@ -572,8 +673,7 @@ function resizeCanvas() {
 
 // ===== 物理エンジン =====
 function buildPhysics() {
-  // 落下速度を少し上げる（前回は遅すぎたため調整）
-  engine = Engine.create({ gravity: { y: 0.32 } });
+  engine = Engine.create({ gravity: { y: DIFFICULTIES[currentDifficulty].gravity } });
   world  = engine.world;
   runner = Runner.create();
   Runner.run(runner, engine);
@@ -604,11 +704,31 @@ function setupCollision() {
       const mA = bodies.find(m => m.body === a);
       const mB = bodies.find(m => m.body === b);
       if (!mA || !mB) continue;
-      if (mA.idx !== mB.idx) continue;
       if (mA.merging || mB.merging) continue;
+
+      const defA = monsterDef(mA.idx), defB = monsterDef(mB.idx);
+
+      // 爆弾スライム：何と触れても爆発
+      if (defA.specialType === 'bomb' || defB.specialType === 'bomb') {
+        mA.merging = mB.merging = true;
+        mergeQueue.push([mA, mB, 'bomb']);
+        continue;
+      }
+
+      // 虹スライム：どのモンスターとも合体できるワイルドカード（虹同士は反応なし）
+      const hasRainbow = defA.specialType === 'rainbow' || defB.specialType === 'rainbow';
+      if (hasRainbow) {
+        if (defA.specialType === 'rainbow' && defB.specialType === 'rainbow') continue;
+        mA.merging = mB.merging = true;
+        mergeQueue.push([mA, mB, 'rainbow']);
+        continue;
+      }
+
+      // 通常合体：同じ階層同士のみ
+      if (mA.idx !== mB.idx) continue;
       if (mA.idx >= MONSTERS.length - 1) continue;
       mA.merging = mB.merging = true;
-      mergeQueue.push([mA, mB]);
+      mergeQueue.push([mA, mB, 'normal']);
     }
   });
 }
@@ -626,39 +746,87 @@ function gameLoop(ts) {
 
 function processMergeQueue() {
   if (!mergeQueue.length) return;
-  const [mA, mB] = mergeQueue.shift();
+  const [mA, mB, mode] = mergeQueue.shift();
   if (!world.bodies.includes(mA.body) || !world.bodies.includes(mB.body)) return;
 
-  const newIdx = mA.idx + 1;
   const mx = (mA.body.position.x + mB.body.position.x) / 2;
   const my = (mA.body.position.y + mB.body.position.y) / 2;
 
-  const base = MONSTERS[newIdx].score * 10;
+  if (mode === 'bomb') {
+    handleBombExplosion(mA, mB, mx, my);
+    return;
+  }
+
+  let newIdx;
+  if (mode === 'rainbow') {
+    const normalOne = (typeof mA.idx === 'number') ? mA : mB;
+    newIdx = (typeof normalOne.idx === 'number') ? normalOne.idx + 1 : 1;
+  } else {
+    newIdx = mA.idx + 1;
+  }
+  newIdx = Math.min(newIdx, MONSTERS.length - 1);
+
   chainCount++;
   clearTimeout(chainTimer);
   chainTimer = setTimeout(() => { chainCount = 0; }, 1600);
-  const mult = Math.min(chainCount, 8);
-  score += base * mult;
-  document.getElementById('score-display').textContent = score;
-  updateChainDisplay(mult);
-  if (score > bestScore) {
-    bestScore = score;
-    localStorage.setItem('monsterMergeBest', bestScore);
-    document.getElementById('best-display').textContent = bestScore;
-  }
+  const chainMult = Math.min(chainCount, 8);
+  const base = MONSTERS[newIdx].score * 10 * DIFFICULTIES[currentDifficulty].scoreMult;
+  addScore(Math.round(base * chainMult));
+  updateChainDisplay(chainMult);
+  trackMissionCombo(chainMult);
 
-  spawnMagicExplosion(mx, my, MONSTERS[mA.idx], mult);
-  if (newIdx >= 4) spawnBlastWave(mx, my, newIdx);
+  spawnMagicExplosion(mx, my, monsterDef(mA.idx), chainMult);
+  if (newIdx >= 4) {
+    spawnBlastWave(mx, my, newIdx);
+    triggerScreenShake(1);
+    triggerVibration([25]);
+  }
 
   removeMonster(mA);
   removeMonster(mB);
   setTimeout(() => addMonster(newIdx, mx, my, true), 80);
   showLevelUp(MONSTERS[newIdx].name);
+  trackMissionProgress(newIdx);
 
   // 大きなモンスターほど落ち着くまで時間がかかるため、危険判定に猶予を与える
   // （特に魔王など最大サイズは誕生直後に危険ラインへ触れやすいための対策）
   const grace = 1000 + newIdx * 150;
   mergeGraceUntil = Math.max(mergeGraceUntil, Date.now() + grace);
+}
+
+// ===== 爆弾スライムの爆発処理 =====
+function handleBombExplosion(mA, mB, mx, my) {
+  const blastRadius = 110;
+  const affected = bodies.filter(m => {
+    if (m === mA || m === mB) return true;
+    if (m.merging) return false;
+    const dx = m.body.position.x - mx, dy = m.body.position.y - my;
+    return Math.sqrt(dx*dx + dy*dy) < blastRadius;
+  });
+  affected.forEach(m => removeMonster(m));
+
+  const bonus = 30 * DIFFICULTIES[currentDifficulty].scoreMult;
+  addScore(Math.round(bonus * affected.length));
+
+  spawnMagicExplosion(mx, my, { magic: '#ff5500' }, 5);
+  spawnBlastWave(mx, my, 6);
+  triggerScreenShake(2);
+  triggerVibration([40, 30, 60]);
+  showLevelUp('💥 大爆発！');
+
+  mergeGraceUntil = Math.max(mergeGraceUntil, Date.now() + 900);
+}
+
+// ===== スコア加算共通処理（ミッション連携込み） =====
+function addScore(amount) {
+  score += amount;
+  document.getElementById('score-display').textContent = score;
+  if (score > bestScore) {
+    bestScore = score;
+    localStorage.setItem('monsterMergeBest', bestScore);
+    document.getElementById('best-display').textContent = bestScore;
+  }
+  trackMissionScore(score);
 }
 
 function removeMonster(m) {
@@ -667,9 +835,9 @@ function removeMonster(m) {
 }
 
 function addMonster(idx, x, y, fromMerge = false) {
-  const r = MONSTERS[idx].radius;
+  const r = monsterDef(idx).radius;
   const body = Bodies.circle(x, y, r, {
-    restitution: 0.25, friction: 0.45, frictionAir: 0.035, label: 'monster',
+    restitution: 0.25, friction: 0.45, frictionAir: DIFFICULTIES[currentDifficulty].frictionAir, label: 'monster',
   });
   if (fromMerge) Body.setVelocity(body, { x: 0, y: -1.5 });
   World.add(world, body);
@@ -681,16 +849,23 @@ function addMonster(idx, x, y, fromMerge = false) {
 function dropMonster() {
   if (isDropping || isGameOver) return;
   isDropping = true;
-  const r = MONSTERS[currentIdx].radius;
+  const r = monsterDef(currentIdx).radius;
   const cx = Math.max(r + 5, Math.min(W - r - 5, mouseX));
   addMonster(currentIdx, cx, 55, false);
   currentIdx = nextIdx;
   nextIdx    = randomDropIdx();
   drawNextMonster();
+  canHold = true;
+  updateHoldButtonState();
   setTimeout(() => { isDropping = false; }, 500);
 }
 
-function randomDropIdx() { return Math.floor(Math.random() * 5); }
+function randomDropIdx() {
+  const roll = Math.random();
+  if (roll < 0.025) return 'bomb';
+  if (roll < 0.055) return 'rainbow';
+  return Math.floor(Math.random() * DIFFICULTIES[currentDifficulty].dropPool);
+}
 
 // ===== 危険ゾーン =====
 function checkDanger() {
@@ -702,7 +877,7 @@ function checkDanger() {
   }
   let danger = false;
   for (const m of bodies) {
-    if (m.body.position.y - MONSTERS[m.idx].radius < 62) { danger = true; break; }
+    if (m.body.position.y - monsterDef(m.idx).radius < 62) { danger = true; break; }
   }
   if (danger) {
     dangerFrames++;
@@ -727,7 +902,7 @@ function renderMonsterArt(ctx, mon, r) {
 
 // ===== モンスター描画ヘルパー =====
 function drawMonsterAt(ctx, idx, x, y, angle) {
-  const mon = MONSTERS[idx];
+  const mon = monsterDef(idx);
   const r   = mon.radius;
   ctx.save();
   ctx.translate(x, y);
@@ -766,7 +941,7 @@ function renderGame() {
 
   // 落下前プレビュー
   if (!isGameOver) {
-    const mon = MONSTERS[currentIdx];
+    const mon = monsterDef(currentIdx);
     const r   = mon.radius;
     const cx  = Math.max(r + 5, Math.min(W - r - 5, mouseX));
     const previewY = 55;
@@ -905,6 +1080,22 @@ function spawnBlastWave(x, y, newIdx) {
   }
 }
 
+// ===== 演出強化：画面揺れ・振動 =====
+function triggerScreenShake(intensity = 1) {
+  if (!containerEl) return;
+  containerEl.classList.remove('shake', 'shake-strong');
+  void containerEl.offsetWidth; // reflow でアニメーションを再トリガー
+  containerEl.classList.add(intensity >= 2 ? 'shake-strong' : 'shake');
+  const cls = intensity >= 2 ? 'shake-strong' : 'shake';
+  setTimeout(() => containerEl.classList.remove(cls), 400);
+}
+
+function triggerVibration(pattern) {
+  if (navigator.vibrate) {
+    try { navigator.vibrate(pattern); } catch (e) { /* 非対応環境は無視 */ }
+  }
+}
+
 function spawnEmbers() {
   // 明るいファンタジーの輝き（金・白・水色）
   const colors = ['#ffd700','#fff176','#aef2ff','#ffb3c6','#b3e5fc'];
@@ -944,7 +1135,7 @@ function showLevelUp(name) {
 // ===== ネクスト描画（カスタムアート） =====
 function drawNextMonster() {
   const cx = 30, cy = 30;
-  const mon = MONSTERS[nextIdx];
+  const mon = monsterDef(nextIdx);
   const r   = Math.min(mon.radius, 22);
   nextCtx.clearRect(0, 0, 60, 60);
 
@@ -964,6 +1155,184 @@ function drawNextMonster() {
   // 縁取り
   nextCtx.beginPath(); nextCtx.arc(cx, cy, r, 0, Math.PI*2);
   nextCtx.strokeStyle = mon.magic + 'aa'; nextCtx.lineWidth = 1.5; nextCtx.stroke();
+}
+
+// ===== ホールド機能 =====
+function drawHoldMonster() {
+  const cx = 30, cy = 30;
+  holdCtx.clearRect(0, 0, 60, 60);
+
+  if (heldIdx === null) {
+    holdCtx.save();
+    holdCtx.strokeStyle = 'rgba(255,255,255,0.3)';
+    holdCtx.setLineDash([3, 3]);
+    holdCtx.lineWidth = 1.5;
+    holdCtx.beginPath(); holdCtx.arc(cx, cy, 18, 0, Math.PI*2); holdCtx.stroke();
+    holdCtx.restore();
+    return;
+  }
+
+  const mon = monsterDef(heldIdx);
+  const r = Math.min(mon.radius, 22);
+
+  const glow = holdCtx.createRadialGradient(cx, cy, r*0.6, cx, cy, r*1.3);
+  glow.addColorStop(0, 'transparent'); glow.addColorStop(1, mon.magic + '33');
+  holdCtx.beginPath(); holdCtx.arc(cx, cy, r*1.3, 0, Math.PI*2);
+  holdCtx.fillStyle = glow; holdCtx.fill();
+
+  holdCtx.save();
+  holdCtx.translate(cx, cy);
+  holdCtx.beginPath(); holdCtx.arc(0, 0, r, 0, Math.PI*2); holdCtx.clip();
+  renderMonsterArt(holdCtx, mon, r);
+  holdCtx.restore();
+
+  holdCtx.beginPath(); holdCtx.arc(cx, cy, r, 0, Math.PI*2);
+  holdCtx.strokeStyle = mon.magic + 'aa'; holdCtx.lineWidth = 1.5; holdCtx.stroke();
+}
+
+function doHold() {
+  if (!canHold || isGameOver || isDropping) return;
+  if (heldIdx === null) {
+    heldIdx = currentIdx;
+    currentIdx = nextIdx;
+    nextIdx = randomDropIdx();
+    drawNextMonster();
+  } else {
+    const tmp = heldIdx;
+    heldIdx = currentIdx;
+    currentIdx = tmp;
+  }
+  canHold = false;
+  drawHoldMonster();
+  updateHoldButtonState();
+}
+
+function updateHoldButtonState() {
+  const panel = document.getElementById('hold-panel');
+  if (panel) panel.classList.toggle('disabled', !canHold);
+}
+
+function resetHold() {
+  heldIdx = null;
+  canHold = true;
+  drawHoldMonster();
+  updateHoldButtonState();
+}
+
+// ===== デイリーミッション =====
+function getTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+}
+
+function getDailyMission() {
+  const key = getTodayKey();
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  const mission = MISSION_POOL[hash % MISSION_POOL.length];
+  return { ...mission, dateKey: key };
+}
+
+function loadMissionState() {
+  const mission = getDailyMission();
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('monsterMergeMission') || 'null'); } catch (e) {}
+  if (saved && saved.dateKey === mission.dateKey) {
+    return { ...mission, progress: saved.progress, completed: saved.completed };
+  }
+  return { ...mission, progress: 0, completed: false };
+}
+
+function saveMissionState() {
+  if (!missionState) return;
+  localStorage.setItem('monsterMergeMission', JSON.stringify({
+    dateKey: missionState.dateKey, progress: missionState.progress, completed: missionState.completed,
+  }));
+}
+
+function initMission() {
+  missionState = loadMissionState();
+  renderMissionUI();
+}
+
+function renderMissionUI() {
+  const descEl = document.getElementById('mission-desc');
+  const barEl  = document.getElementById('mission-bar-fill');
+  const statusEl = document.getElementById('mission-status');
+  if (!descEl || !missionState) return;
+  descEl.textContent = missionState.desc;
+  const pct = Math.min(100, Math.round((missionState.progress / missionState.target) * 100));
+  barEl.style.width = pct + '%';
+  statusEl.textContent = missionState.completed
+    ? '✅ 達成済み'
+    : `${Math.min(missionState.progress, missionState.target)}/${missionState.target}`;
+  document.getElementById('mission-panel')?.classList.toggle('completed', !!missionState.completed);
+}
+
+function trackMissionProgress(newIdx) {
+  if (!missionState || missionState.completed) return;
+  if (missionState.trackIdx !== undefined && newIdx === missionState.trackIdx) {
+    missionState.progress++;
+    checkMissionComplete();
+  }
+}
+
+function trackMissionScore(finalScore) {
+  if (!missionState || missionState.completed) return;
+  if (missionState.trackType === 'score') {
+    missionState.progress = Math.max(missionState.progress, finalScore);
+    checkMissionComplete();
+  }
+}
+
+function trackMissionCombo(mult) {
+  if (!missionState || missionState.completed) return;
+  if (missionState.trackType === 'combo' && mult >= missionState.comboReq) {
+    missionState.progress = 1;
+    checkMissionComplete();
+  }
+}
+
+function checkMissionComplete() {
+  if (!missionState.completed && missionState.progress >= missionState.target) {
+    missionState.completed = true;
+    showMissionComplete();
+  }
+  saveMissionState();
+  renderMissionUI();
+}
+
+function showMissionComplete() {
+  const ex = document.getElementById('mission-complete-popup'); if (ex) ex.remove();
+  const el = document.createElement('div'); el.id = 'mission-complete-popup';
+  el.innerHTML = '🎉 <span style="font-size:0.9rem">デイリーミッション達成！</span>';
+  document.getElementById('app').appendChild(el);
+  setTimeout(() => el.remove(), 1800);
+}
+
+// ===== 難易度選択 =====
+function initDifficultyUI() {
+  const labelEl = document.getElementById('difficulty-label');
+  if (labelEl) labelEl.textContent = DIFFICULTIES[currentDifficulty].label;
+}
+
+function applyDifficulty(id) {
+  currentDifficulty = id;
+  localStorage.setItem('monsterMergeDifficulty', id);
+  const labelEl = document.getElementById('difficulty-label');
+  if (labelEl) labelEl.textContent = DIFFICULTIES[id].label;
+  if (engine) engine.gravity.y = DIFFICULTIES[id].gravity;
+}
+
+function updateDifficultyActiveState(id) {
+  document.querySelectorAll('.difficulty-option').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.difficultyId === id);
+  });
+}
+
+function showDifficultyScreen() {
+  updateDifficultyActiveState(currentDifficulty);
+  document.getElementById('difficulty-screen').classList.remove('hidden');
 }
 
 // ===== 進化バー =====
@@ -1033,7 +1402,7 @@ function setupInput() {
 // ===== タイトル画面 =====
 function showTitle() {
   // ゲーム状態リセット
-  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0; mergeGraceUntil = 0;
+  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0; mergeGraceUntil = 0; resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
   document.getElementById('chain-display').textContent = 'x1';
@@ -1099,7 +1468,7 @@ function triggerGameOver() {
 }
 
 function restartGame() {
-  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0; mergeGraceUntil = 0;
+  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0; mergeGraceUntil = 0; resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
   document.getElementById('chain-display').textContent = 'x1';
@@ -1220,6 +1589,24 @@ function adjustColor(hex, n) {
       const themeId = btn.dataset.themeId;
       applyTheme(themeId);
       updateThemeActiveState(themeId);
+    });
+  });
+
+  // ===== ホールド =====
+  document.getElementById('hold-panel').addEventListener('click', doHold);
+
+  // ===== 難易度選択 =====
+  document.getElementById('difficulty-btn').addEventListener('click', () => {
+    showDifficultyScreen();
+  });
+  document.getElementById('difficulty-close-btn').addEventListener('click', () => {
+    document.getElementById('difficulty-screen').classList.add('hidden');
+  });
+  document.querySelectorAll('.difficulty-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.difficultyId;
+      applyDifficulty(id);
+      updateDifficultyActiveState(id);
     });
   });
 })();

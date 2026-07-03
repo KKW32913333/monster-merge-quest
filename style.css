@@ -338,6 +338,18 @@ html, body {
   border: 2px solid var(--panel-border);
 }
 
+#hold-panel {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+}
+#hold-panel:active { transform: scale(0.94); }
+#hold-panel.disabled { opacity: 0.4; cursor: not-allowed; }
+#hold-canvas {
+  border-radius: 10px;
+  background: rgba(0,0,0,0.4);
+  border: 2px solid var(--panel-border);
+}
+
 /* ===== GAME CONTAINER ===== */
 #game-container {
   position: relative; width: 100%; max-width: 420px; flex: 1;
@@ -662,3 +674,116 @@ button {
   20%  { opacity: 1; transform: translate(-50%,-60%) scale(1.1); }
   100% { opacity: 0; transform: translate(-50%,-90%) scale(0.9); }
 }
+
+/* ===== 画面揺れ演出 ===== */
+@keyframes screenShake {
+  0%,100% { transform: translate(0,0); }
+  20% { transform: translate(-6px, 3px); }
+  40% { transform: translate(5px,-4px); }
+  60% { transform: translate(-4px,4px); }
+  80% { transform: translate(3px,-2px); }
+}
+@keyframes screenShakeStrong {
+  0%,100% { transform: translate(0,0); }
+  15% { transform: translate(-10px, 5px) rotate(-0.5deg); }
+  30% { transform: translate(9px,-7px) rotate(0.5deg); }
+  45% { transform: translate(-8px,7px); }
+  60% { transform: translate(7px,-5px); }
+  75% { transform: translate(-5px,4px); }
+  90% { transform: translate(3px,-2px); }
+}
+.shake { animation: screenShake 0.35s ease; }
+.shake-strong { animation: screenShakeStrong 0.45s ease; }
+
+/* ===== デイリーミッション（タイトル画面） ===== */
+#mission-panel {
+  width: 100%;
+  background: rgba(0,0,0,0.25);
+  border: 2px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+#mission-panel.completed { border-color: var(--accent-gold-bright); }
+#mission-header {
+  font-size: 0.62rem; color: var(--text-dim); letter-spacing: 0.08em;
+}
+#mission-desc {
+  font-size: 0.78rem; color: var(--text-primary); font-weight: bold; line-height: 1.4;
+}
+#mission-bar {
+  width: 100%; height: 8px; border-radius: 4px;
+  background: rgba(0,0,0,0.35); overflow: hidden;
+}
+#mission-bar-fill {
+  height: 100%; width: 0%;
+  background: var(--grad-btn-primary);
+  transition: width 0.3s ease;
+}
+#mission-status {
+  font-size: 0.65rem; color: var(--accent-gold); text-align: right; font-weight: bold;
+}
+
+#mission-complete-popup {
+  position: fixed; top: 32%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.1rem; font-weight: bold;
+  color: var(--accent-gold-bright);
+  text-shadow: 0 0 16px var(--glow-bright), 0 2px 4px rgba(0,0,0,0.4);
+  pointer-events: none; z-index: 60;
+  animation: levelAnim 1s ease forwards;
+  text-align: center;
+}
+
+/* ===== 難易度選択 ===== */
+#difficulty-btn {
+  width: 100%; padding: 10px;
+  background: var(--grad-btn-nav);
+  border: none; color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 3px 0 var(--shadow-solid-nav);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+#difficulty-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--shadow-solid-nav); }
+
+#difficulty-screen {
+  position: fixed; inset: 0;
+  background: var(--bg-overlay);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 220; backdrop-filter: blur(6px);
+}
+#difficulty-box {
+  background: var(--bg-box);
+  border: 3px solid var(--panel-border);
+  border-radius: 24px;
+  padding: 24px 22px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  min-width: 280px; max-width: 92vw;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  animation: fadeInUp 0.3s ease;
+}
+#difficulty-title {
+  font-size: 1.2rem; color: var(--accent-gold);
+  text-shadow: 0 0 10px var(--glow-warm);
+  letter-spacing: 0.06em; font-weight: bold; margin-bottom: 4px;
+}
+#difficulty-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.difficulty-option {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%; padding: 10px 14px;
+  background: rgba(0,0,0,0.25);
+  border: 2px solid var(--panel-border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-family: var(--font-ui); font-weight: bold; font-size: 0.85rem;
+  cursor: pointer; text-align: left;
+}
+.difficulty-option.active { border-color: var(--accent-gold-bright); box-shadow: 0 0 0 2px var(--accent-gold-bright) inset; }
+.difficulty-option-desc { font-size: 0.62rem; color: var(--text-dim); font-weight: normal; }
+#difficulty-close-btn {
+  width: 100%; padding: 10px; margin-top: 6px;
+  background: var(--grad-btn-nav);
+  border: none; color: #fff; border-radius: 12px;
+  box-shadow: 0 3px 0 var(--shadow-solid-nav);
+}
+#difficulty-close-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--shadow-solid-nav); }
