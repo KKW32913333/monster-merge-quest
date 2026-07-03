@@ -552,8 +552,8 @@ function resizeCanvas() {
 
 // ===== 物理エンジン =====
 function buildPhysics() {
-  // gravity を小さくしてゆっくり落下
-  engine = Engine.create({ gravity: { y: 0.5 } });
+  // gravity をさらに小さくし、落下速度を緩やかに調整
+  engine = Engine.create({ gravity: { y: 0.35 } });
   world  = engine.world;
   runner = Runner.create();
   Runner.run(runner, engine);
@@ -641,7 +641,7 @@ function removeMonster(m) {
 function addMonster(idx, x, y, fromMerge = false) {
   const r = MONSTERS[idx].radius;
   const body = Bodies.circle(x, y, r, {
-    restitution: 0.25, friction: 0.45, frictionAir: 0.02, label: 'monster',
+    restitution: 0.25, friction: 0.45, frictionAir: 0.03, label: 'monster',
   });
   if (fromMerge) Body.setVelocity(body, { x: 0, y: -1.5 });
   World.add(world, body);
