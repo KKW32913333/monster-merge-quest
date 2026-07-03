@@ -489,6 +489,8 @@ function drawDemonLord(ctx, r) {
 // ===== ゲーム状態 =====
 let engine, world, runner;
 let gameCanvas, effectCanvas, nextCanvas;
+// 画面のdevicePixelRatioに合わせてCanvas解像度を上げ、スマホでのぼやけを防ぐ（重すぎないよう最大3倍まで）
+const DPR = Math.min(window.devicePixelRatio || 1, 3);
 let gameCtx, effectCtx, nextCtx;
 let containerEl;
 let W, H;
@@ -519,6 +521,14 @@ function init() {
   effectCtx    = effectCanvas.getContext('2d');
   nextCtx      = nextCanvas.getContext('2d');
 
+  // NEXT表示キャンバスもDPR倍の解像度にして高精細化（表示サイズは60x60のまま）
+  const nextCssSize = 60;
+  nextCanvas.width  = nextCssSize * DPR;
+  nextCanvas.height = nextCssSize * DPR;
+  nextCanvas.style.width  = nextCssSize + 'px';
+  nextCanvas.style.height = nextCssSize + 'px';
+  nextCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
   buildPhysics();
@@ -545,8 +555,17 @@ function init() {
 function resizeCanvas() {
   W = containerEl.clientWidth;
   H = containerEl.clientHeight;
-  gameCanvas.width = effectCanvas.width = W;
-  gameCanvas.height = effectCanvas.height = H;
+  // 実解像度をDPR倍にして高精細に。CSS表示サイズは従来通りW×H。
+  gameCanvas.width  = W * DPR;
+  gameCanvas.height = H * DPR;
+  gameCanvas.style.width  = W + 'px';
+  gameCanvas.style.height = H + 'px';
+  effectCanvas.width  = W * DPR;
+  effectCanvas.height = H * DPR;
+  effectCanvas.style.width  = W + 'px';
+  effectCanvas.style.height = H + 'px';
+  gameCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  effectCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (engine) rebuildWalls();
 }
 
@@ -938,8 +957,14 @@ function buildEvolutionBar() {
   list.innerHTML = '';
   MONSTERS.forEach((mon, i) => {
     const item = document.createElement('div'); item.className = 'evo-item';
-    const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
+    const canvas = document.createElement('canvas');
+    const cssSize = 32;
+    canvas.width  = cssSize * DPR;
+    canvas.height = cssSize * DPR;
+    canvas.style.width  = cssSize + 'px';
+    canvas.style.height = cssSize + 'px';
     const ctx = canvas.getContext('2d');
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     const r = Math.min(mon.radius*0.5, 12), cx = 16, cy = 16;
     ctx.save(); ctx.translate(cx, cy);
     ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.clip();
