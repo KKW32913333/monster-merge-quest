@@ -41,6 +41,14 @@
           .then(() => console.log('✅ Service Worker 登録完了'))
           .catch(err => console.warn('Service Worker 登録失敗:', err));
       });
+      // 新しいService Workerが有効化されたら自動でリロードして最新版を反映
+      let hasReloaded = false;
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SW_UPDATED' && !hasReloaded) {
+          hasReloaded = true;
+          window.location.reload();
+        }
+      });
     }
   </script>
 </head>
