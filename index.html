@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>⚔️ Monster Merge Quest</title>
 
+  <!-- 保存済みテーマを即時反映（画面のちらつき防止） -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('monsterMergeTheme') || 'volcanic';
+      document.documentElement.setAttribute('data-theme', saved);
+    })();
+  </script>
+
   <!-- PWA 設定 -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#d4a012">
@@ -89,6 +97,7 @@
         <div id="title-sub">モンスター合体パズル冒険！</div>
         <button id="start-btn">⚔️ 冒険を始める！</button>
         <button id="title-ranking-btn">🏆 殿堂ランキング</button>
+        <button id="theme-btn">🎨 テーマを選ぶ</button>
       </div>
     </div>
 
@@ -114,6 +123,32 @@
         <div id="ranking-title">🏆 冒険者殿堂</div>
         <div id="ranking-list"></div>
         <button id="close-ranking-btn">🏰 タイトルに戻る</button>
+      </div>
+    </div>
+
+    <!-- テーマ選択 -->
+    <div id="theme-screen" class="hidden">
+      <div id="theme-box">
+        <div id="theme-title">🎨 テーマを選ぶ</div>
+        <div id="theme-list">
+          <button class="theme-option" data-theme-id="dungeon">
+            <span class="theme-swatch sw-dungeon"></span>
+            <span class="theme-option-name">漆黒の地下大迷宮</span>
+          </button>
+          <button class="theme-option" data-theme-id="volcanic">
+            <span class="theme-swatch sw-volcanic"></span>
+            <span class="theme-option-name">業火の火山地帯</span>
+          </button>
+          <button class="theme-option" data-theme-id="ice">
+            <span class="theme-swatch sw-ice"></span>
+            <span class="theme-option-name">氷結の永久凍土</span>
+          </button>
+          <button class="theme-option" data-theme-id="cosmic">
+            <span class="theme-swatch sw-cosmic"></span>
+            <span class="theme-option-name">星霜の魔法陣</span>
+          </button>
+        </div>
+        <button id="theme-close-btn">閉じる</button>
       </div>
     </div>
   </div>

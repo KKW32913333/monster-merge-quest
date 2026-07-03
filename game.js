@@ -1184,5 +1184,38 @@ function adjustColor(hex, n) {
       restartGame();
     });
   });
+
+  // ===== テーマ選択 =====
+  document.getElementById('theme-btn').addEventListener('click', () => {
+    showThemeScreen();
+  });
+  document.getElementById('theme-close-btn').addEventListener('click', () => {
+    document.getElementById('theme-screen').classList.add('hidden');
+  });
+  document.querySelectorAll('.theme-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const themeId = btn.dataset.themeId;
+      applyTheme(themeId);
+      updateThemeActiveState(themeId);
+    });
+  });
 })();
+
+// ===== テーマ切り替え =====
+function applyTheme(themeId) {
+  document.documentElement.setAttribute('data-theme', themeId);
+  localStorage.setItem('monsterMergeTheme', themeId);
+}
+
+function updateThemeActiveState(themeId) {
+  document.querySelectorAll('.theme-option').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.themeId === themeId);
+  });
+}
+
+function showThemeScreen() {
+  const current = localStorage.getItem('monsterMergeTheme') || 'volcanic';
+  updateThemeActiveState(current);
+  document.getElementById('theme-screen').classList.remove('hidden');
+}
 
