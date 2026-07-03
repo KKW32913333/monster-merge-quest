@@ -571,8 +571,8 @@ function resizeCanvas() {
 
 // ===== 物理エンジン =====
 function buildPhysics() {
-  // gravity をさらに緩やかに調整（体感速度を抑える）
-  engine = Engine.create({ gravity: { y: 0.25 } });
+  // 落下速度を少し上げる（前回は遅すぎたため調整）
+  engine = Engine.create({ gravity: { y: 0.32 } });
   world  = engine.world;
   runner = Runner.create();
   Runner.run(runner, engine);
@@ -584,8 +584,11 @@ function rebuildWalls() {
   World.remove(world, world.bodies.filter(b => b.label === 'wall'));
   const opts = { isStatic: true, label: 'wall', restitution: 0.2, friction: 0.6 };
   const t = 30;
+  // 床の装飾ゾーン（CSS側で高さ8%）より上に着地ラインを設定し、
+  // ボールが装飾の中に埋もれて見えないようにする
+  const floorMargin = H * 0.06;
   World.add(world, [
-    Bodies.rectangle(W/2, H + t/2, W, t, opts),
+    Bodies.rectangle(W/2, H - floorMargin + t/2, W, t, opts),
     Bodies.rectangle(-t/2, H/2, t, H*2, opts),
     Bodies.rectangle(W + t/2, H/2, t, H*2, opts),
   ]);
@@ -660,7 +663,7 @@ function removeMonster(m) {
 function addMonster(idx, x, y, fromMerge = false) {
   const r = MONSTERS[idx].radius;
   const body = Bodies.circle(x, y, r, {
-    restitution: 0.25, friction: 0.45, frictionAir: 0.045, label: 'monster',
+    restitution: 0.25, friction: 0.45, frictionAir: 0.035, label: 'monster',
   });
   if (fromMerge) Body.setVelocity(body, { x: 0, y: -1.5 });
   World.add(world, body);
