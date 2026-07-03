@@ -5,7 +5,7 @@ const { Engine, Runner, Bodies, Body, World, Events } = Matter;
 
 // ===== モンスター画像読み込みヘルパー =====
 // 画像が用意されている段階は img を優先描画し、
-// 画像が無い段階（フェニックス）は従来通り draw 関数で描画する
+// 画像が読み込めなかった場合は draw 関数（Canvas描画）にフォールバックする
 function loadMonsterImg(src) {
   const img = new Image();
   img.onload = () => {
@@ -36,7 +36,7 @@ const MONSTERS = [
   { name: '魔女',         radius: 66,  color: '#330066', score: 28, magic: '#cc44ff',
     img: loadMonsterImg('monster-witch.png'), draw: drawWitch },
   { name: 'フェニックス', radius: 80,  color: '#cc3300', score: 36, magic: '#ff6600',
-    draw: drawPhoenix },
+    img: loadMonsterImg('monster-phoenix.png'), draw: drawPhoenix },
   { name: 'ドラゴン',     radius: 95,  color: '#664400', score: 45, magic: '#3388ff',
     img: loadMonsterImg('monster-dragon.png'), draw: drawLich },
   { name: '魔王',         radius: 112, color: '#440011', score: 55, magic: '#ff0033',
