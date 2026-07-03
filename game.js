@@ -510,6 +510,7 @@ let isDropping   = false;
 let isGameOver   = false;
 let mergeQueue   = [];
 let dangerFrames = 0;
+let mergeGraceUntil = 0; // この時刻までは合体直後の判定猶予として危険判定を停止
 
 // ===== 初期化 =====
 function init() {
@@ -653,6 +654,11 @@ function processMergeQueue() {
   removeMonster(mB);
   setTimeout(() => addMonster(newIdx, mx, my, true), 80);
   showLevelUp(MONSTERS[newIdx].name);
+
+  // 大きなモンスターほど落ち着くまで時間がかかるため、危険判定に猶予を与える
+  // （特に魔王など最大サイズは誕生直後に危険ラインへ触れやすいための対策）
+  const grace = 1000 + newIdx * 150;
+  mergeGraceUntil = Math.max(mergeGraceUntil, Date.now() + grace);
 }
 
 function removeMonster(m) {
@@ -688,6 +694,12 @@ function randomDropIdx() { return Math.floor(Math.random() * 5); }
 
 // ===== 危険ゾーン =====
 function checkDanger() {
+  // 合体直後の猶予期間中は危険判定をスキップ（大型モンスター誕生直後の誤判定防止）
+  if (Date.now() < mergeGraceUntil) {
+    dangerFrames = 0;
+    document.getElementById('danger-line').style.opacity = 0.8;
+    return;
+  }
   let danger = false;
   for (const m of bodies) {
     if (m.body.position.y - MONSTERS[m.idx].radius < 62) { danger = true; break; }
@@ -1021,7 +1033,7 @@ function setupInput() {
 // ===== タイトル画面 =====
 function showTitle() {
   // ゲーム状態リセット
-  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0;
+  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0; mergeGraceUntil = 0;
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
   document.getElementById('chain-display').textContent = 'x1';
@@ -1087,7 +1099,7 @@ function triggerGameOver() {
 }
 
 function restartGame() {
-  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0;
+  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0; mergeGraceUntil = 0;
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
   document.getElementById('chain-display').textContent = 'x1';
