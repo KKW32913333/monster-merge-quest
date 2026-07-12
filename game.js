@@ -1342,7 +1342,7 @@ const MATCH3_TYPES = 10; // MONSTERS全10体（スライム〜魔王）を使用
 const MATCH3_START_MOVES = 25;
 
 let match3Canvas, match3Ctx;
-let match3Grid = [];
+let match3Grid = [];       // [row][col] = {type, special, row, col, visX, visY, scale, alpha} | null
 let match3TileSize = 0;
 let match3Score = 0;
 let match3Moves = MATCH3_START_MOVES;
@@ -1350,6 +1350,9 @@ let match3Best = parseInt(localStorage.getItem('monsterMergeMatch3Best') || '0')
 let match3Selected = null;
 let match3Busy = false;
 let match3ComboChain = 0;
+let match3Particles = [];
+let match3Tweens = [];
+let match3AnimHandle = null;
 
 function openMatch3() {
   document.getElementById('title-screen').classList.add('hidden');
@@ -1359,6 +1362,8 @@ function openMatch3() {
 }
 
 function closeMatch3ToTitle() {
+  if (match3AnimHandle) cancelAnimationFrame(match3AnimHandle);
+  match3AnimHandle = null;
   document.getElementById('match3-screen').classList.add('hidden');
   document.getElementById('match3-result-screen').classList.add('hidden');
   document.getElementById('title-screen').classList.remove('hidden');
@@ -1389,10 +1394,16 @@ function startMatch3Game() {
   match3Moves = MATCH3_START_MOVES;
   match3Selected = null;
   match3Busy = false;
+  match3Particles = [];
+  match3Tweens = [];
   document.getElementById('match3-best').textContent = match3Best;
   updateMatch3Hud();
   generateMatch3Board();
-  renderMatch3();
+  startMatch3Loop();
+}
+
+function makeMatch3Tile(type, row, col, special) {
+  return { type, special: special || null, row, col, visX: col, visY: row, scale: 1, alpha: 1 };
 }
 
 function generateMatch3Board() {
@@ -1404,10 +1415,10 @@ function generateMatch3Board() {
       do {
         t = Math.floor(Math.random() * MATCH3_TYPES);
       } while (
-        (c >= 2 && row[c-1] === t && row[c-2] === t) ||
-        (r >= 2 && match3Grid[r-1][c] === t && match3Grid[r-2][c] === t)
+        (c >= 2 && row[c-1].type === t && row[c-2].type === t) ||
+        (r >= 2 && match3Grid[r-1][c].type === t && match3Grid[r-2][c].type === t)
       );
-      row.push(t);
+      row.push(makeMatch3Tile(t, r, c));
     }
     match3Grid.push(row);
   }
@@ -1418,16 +1429,48 @@ function updateMatch3Hud() {
   document.getElementById('match3-moves').textContent = match3Moves;
 }
 
+// ===== アニメーションループ =====
+function startMatch3Loop() {
+  if (match3AnimHandle) cancelAnimationFrame(match3AnimHandle);
+  function loop(now) {
+    updateMatch3Tweens(now);
+    updateMatch3Particles();
+    renderMatch3();
+    match3AnimHandle = requestAnimationFrame(loop);
+  }
+  match3AnimHandle = requestAnimationFrame(loop);
+}
+
+function addMatch3Tween(duration, onUpdate, onComplete) {
+  match3Tweens.push({ start: performance.now(), duration, onUpdate, onComplete });
+}
+
+function updateMatch3Tweens(now) {
+  for (let i = match3Tweens.length - 1; i >= 0; i--) {
+    const tw = match3Tweens[i];
+    const t = Math.min(1, (now - tw.start) / tw.duration);
+    tw.onUpdate(t);
+    if (t >= 1) {
+      match3Tweens.splice(i, 1);
+      if (tw.onComplete) tw.onComplete();
+    }
+  }
+}
+
+function easeOutQuad(t) { return 1 - (1 - t) * (1 - t); }
+function easeInQuad(t)  { return t * t; }
+
+// ===== 描画 =====
 function renderMatch3() {
   const ts = match3TileSize;
   match3Ctx.clearRect(0, 0, MATCH3_COLS*ts, MATCH3_ROWS*ts);
   for (let r = 0; r < MATCH3_ROWS; r++) {
     for (let c = 0; c < MATCH3_COLS; c++) {
       const t = match3Grid[r][c];
-      if (t === null || t === undefined) continue;
-      drawMatch3Tile(r, c, t);
+      if (t) drawMatch3Tile(t);
     }
   }
+  renderMatch3Particles();
 }
 
 function match3RoundRectPath(ctx, x, y, w, h, radius) {
@@ -1440,30 +1483,110 @@ function match3RoundRectPath(ctx, x, y, w, h, radius) {
   ctx.closePath();
 }
 
-function drawMatch3Tile(r, c, idx) {
+function drawMatch3Tile(tile) {
   const ts = match3TileSize;
-  const cx = c*ts + ts/2, cy = r*ts + ts/2;
-  const mon = MONSTERS[idx];
-  const isSel = match3Selected && match3Selected.row === r && match3Selected.col === c;
+  const cx = tile.visX*ts + ts/2, cy = tile.visY*ts + ts/2;
+  const mon = MONSTERS[tile.type];
+  const isSel = match3Selected && match3Selected.row === tile.row && match3Selected.col === tile.col;
+  const isLightning = tile.special === 'lightning';
 
-  match3Ctx.fillStyle = isSel ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)';
-  match3RoundRectPath(match3Ctx, c*ts+2, r*ts+2, ts-4, ts-4, 8);
+  match3Ctx.save();
+  match3Ctx.globalAlpha = tile.alpha;
+  match3Ctx.translate(cx, cy);
+  match3Ctx.scale(tile.scale, tile.scale);
+
+  match3Ctx.fillStyle = isLightning ? 'rgba(255,230,80,0.18)' : (isSel ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)');
+  match3RoundRectPath(match3Ctx, -ts/2+2, -ts/2+2, ts-4, ts-4, 8);
   match3Ctx.fill();
-  if (isSel) {
+
+  if (isLightning) {
+    match3Ctx.strokeStyle = '#ffe654';
+    match3Ctx.lineWidth = 2;
+    match3Ctx.shadowColor = '#ffe654';
+    match3Ctx.shadowBlur = 8;
+    match3RoundRectPath(match3Ctx, -ts/2+2, -ts/2+2, ts-4, ts-4, 8);
+    match3Ctx.stroke();
+    match3Ctx.shadowBlur = 0;
+  } else if (isSel) {
     match3Ctx.strokeStyle = mon.magic;
     match3Ctx.lineWidth = 2;
-    match3RoundRectPath(match3Ctx, c*ts+2, r*ts+2, ts-4, ts-4, 8);
+    match3RoundRectPath(match3Ctx, -ts/2+2, -ts/2+2, ts-4, ts-4, 8);
     match3Ctx.stroke();
   }
 
-  const r2 = ts*0.38;
+  const r2 = ts * 0.36;
   match3Ctx.save();
-  match3Ctx.translate(cx, cy);
   match3Ctx.beginPath(); match3Ctx.arc(0, 0, r2, 0, Math.PI*2); match3Ctx.clip();
   renderMonsterArt(match3Ctx, mon, r2);
   match3Ctx.restore();
+
+  if (isLightning) {
+    match3Ctx.font = `${ts*0.34}px serif`;
+    match3Ctx.textAlign = 'center'; match3Ctx.textBaseline = 'middle';
+    match3Ctx.fillStyle = '#fff6c8';
+    match3Ctx.shadowColor = '#ffe654'; match3Ctx.shadowBlur = 6;
+    match3Ctx.fillText('⚡', ts*0.3, -ts*0.28);
+  }
+
+  match3Ctx.restore();
 }
 
+function renderMatch3Particles() {
+  for (const p of match3Particles) {
+    match3Ctx.save();
+    match3Ctx.globalAlpha = Math.max(0, p.life);
+    match3Ctx.translate(p.x, p.y);
+    if (p.type === 'rune') {
+      match3Ctx.rotate(p.rot || 0);
+      match3Ctx.font = `${p.size*2}px serif`;
+      match3Ctx.textAlign = 'center'; match3Ctx.textBaseline = 'middle';
+      match3Ctx.fillStyle = p.color;
+      match3Ctx.shadowColor = p.color; match3Ctx.shadowBlur = 8;
+      match3Ctx.fillText(p.char, 0, 0);
+    } else if (p.type === 'ring') {
+      match3Ctx.beginPath(); match3Ctx.arc(0, 0, p.size*(1 + (1-p.life)*0.4), 0, Math.PI*2);
+      match3Ctx.strokeStyle = p.color; match3Ctx.lineWidth = 2;
+      match3Ctx.shadowColor = p.color; match3Ctx.shadowBlur = 6;
+      match3Ctx.stroke();
+    } else {
+      match3Ctx.beginPath(); match3Ctx.arc(0, 0, p.size, 0, Math.PI*2);
+      match3Ctx.fillStyle = p.color;
+      match3Ctx.shadowColor = p.color; match3Ctx.shadowBlur = 6;
+      match3Ctx.fill();
+    }
+    match3Ctx.restore();
+  }
+}
+
+function updateMatch3Particles() {
+  for (let i = match3Particles.length - 1; i >= 0; i--) {
+    const p = match3Particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vy += 0.05;
+    p.life -= p.decay;
+    if (p.life <= 0) match3Particles.splice(i, 1);
+  }
+}
+
+function spawnMatch3ClearEffect(row, col, type, isUpgrade) {
+  const ts = match3TileSize;
+  const x = col*ts + ts/2, y = row*ts + ts/2;
+  const color = isUpgrade ? '#ffe654' : (MONSTERS[type] ? MONSTERS[type].magic : '#ffcc33');
+  const cnt = isUpgrade ? 14 : 7;
+  for (let i = 0; i < cnt; i++) {
+    const angle = (i/cnt)*Math.PI*2;
+    const speed = 1 + Math.random()*2;
+    match3Particles.push({ type:'spark', x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed-1, size:2+Math.random()*2, color, life:1, decay:0.035+Math.random()*0.02 });
+  }
+  match3Particles.push({ type:'ring', x, y, vx:0, vy:0, size:ts*0.4, color, life:0.9, decay:0.055 });
+  if (isUpgrade) {
+    match3Particles.push({ type:'rune', x, y, vx:0, vy:-0.6, size:ts*0.22, color:'#fff2a8', char:'⚡', rot:0, life:1, decay:0.02 });
+  } else if (Math.random() < 0.35) {
+    match3Particles.push({ type:'rune', x, y, vx:(Math.random()-0.5)*1.4, vy:-1-Math.random(), size:ts*0.16, color, char: RUNES[Math.floor(Math.random()*RUNES.length)], rot:Math.random()*Math.PI*2, life:1, decay:0.025 });
+  }
+}
+
+// ===== 入力処理 =====
 function onMatch3PointerDown(e) {
   if (match3Busy || match3Moves <= 0) return;
   const rect = match3Canvas.getBoundingClientRect();
@@ -1472,18 +1595,16 @@ function onMatch3PointerDown(e) {
   const col = Math.floor(x / match3TileSize);
   const row = Math.floor(y / match3TileSize);
   if (row < 0 || row >= MATCH3_ROWS || col < 0 || col >= MATCH3_COLS) return;
+  if (!match3Grid[row][col]) return;
 
   if (!match3Selected) {
     match3Selected = { row, col };
-    renderMatch3();
     return;
   }
   if (match3Selected.row === row && match3Selected.col === col) {
     match3Selected = null;
-    renderMatch3();
     return;
   }
-
   const isAdjacent = Math.abs(match3Selected.row - row) + Math.abs(match3Selected.col - col) === 1;
   if (isAdjacent) {
     const a = match3Selected, b = { row, col };
@@ -1491,71 +1612,131 @@ function onMatch3PointerDown(e) {
     attemptMatch3Swap(a, b);
   } else {
     match3Selected = { row, col };
-    renderMatch3();
   }
 }
 
+// ===== スワップ処理（アニメーション付き） =====
 function attemptMatch3Swap(a, b) {
-  swapMatch3Tiles(a, b);
-  const matches = findMatch3Matches();
-  if (matches.length === 0) {
-    swapMatch3Tiles(a, b);
-    renderMatch3();
-    return;
-  }
-  match3Moves--;
-  updateMatch3Hud();
   match3Busy = true;
-  match3ComboChain = 0;
-  renderMatch3();
-  setTimeout(resolveMatch3, 150);
+  const tileA = match3Grid[a.row][a.col];
+  const tileB = match3Grid[b.row][b.col];
+
+  // データ上で入れ替えて判定
+  match3Grid[a.row][a.col] = tileB;
+  match3Grid[b.row][b.col] = tileA;
+  if (tileA) { tileA.row = b.row; tileA.col = b.col; }
+  if (tileB) { tileB.row = a.row; tileB.col = a.col; }
+
+  const runs = findMatch3Runs();
+  const specialRows = [];
+  if (tileA && tileA.special === 'lightning') specialRows.push(tileA.row);
+  if (tileB && tileB.special === 'lightning') specialRows.push(tileB.row);
+  const valid = runs.length > 0 || specialRows.length > 0;
+
+  if (!valid) {
+    // データを元に戻す（見た目は一往復させて無効を伝える）
+    match3Grid[a.row][a.col] = tileA;
+    match3Grid[b.row][b.col] = tileB;
+    if (tileA) { tileA.row = a.row; tileA.col = a.col; }
+    if (tileB) { tileB.row = b.row; tileB.col = b.col; }
+  } else {
+    match3Moves--;
+    updateMatch3Hud();
+    match3ComboChain = 0;
+  }
+
+  addMatch3Tween(190, (t) => {
+    const e = easeOutQuad(t);
+    if (tileA) { tileA.visX = a.col + (b.col-a.col)*e; tileA.visY = a.row + (b.row-a.row)*e; }
+    if (tileB) { tileB.visX = b.col + (a.col-b.col)*e; tileB.visY = b.row + (a.row-b.row)*e; }
+  }, () => {
+    if (!valid) {
+      addMatch3Tween(190, (t) => {
+        const e = easeOutQuad(t);
+        if (tileA) { tileA.visX = b.col + (a.col-b.col)*e; tileA.visY = b.row + (a.row-b.row)*e; }
+        if (tileB) { tileB.visX = a.col + (b.col-a.col)*e; tileB.visY = a.row + (b.row-a.row)*e; }
+      }, () => { match3Busy = false; });
+    } else {
+      resolveMatch3(specialRows);
+    }
+  });
 }
 
-function swapMatch3Tiles(a, b) {
-  const tmp = match3Grid[a.row][a.col];
-  match3Grid[a.row][a.col] = match3Grid[b.row][b.col];
-  match3Grid[b.row][b.col] = tmp;
-}
-
-function findMatch3Matches() {
-  const matched = new Set();
+// ===== マッチ判定 =====
+function findMatch3Runs() {
+  const runs = [];
   for (let r = 0; r < MATCH3_ROWS; r++) {
-    let run = 1;
+    let runStart = 0;
     for (let c = 1; c <= MATCH3_COLS; c++) {
-      const same = c < MATCH3_COLS && match3Grid[r][c] === match3Grid[r][c-1] && match3Grid[r][c] !== null;
-      if (same) { run++; }
-      else {
-        if (run >= 3) for (let k = c-run; k < c; k++) matched.add(r+','+k);
-        run = 1;
+      const curTile  = c < MATCH3_COLS ? match3Grid[r][c] : null;
+      const prevTile = match3Grid[r][c-1];
+      const same = curTile && prevTile && curTile.type === prevTile.type;
+      if (!same) {
+        const len = c - runStart;
+        if (len >= 3) {
+          const cells = [];
+          for (let k = runStart; k < c; k++) cells.push({ row: r, col: k });
+          runs.push({ cells });
+        }
+        runStart = c;
       }
     }
   }
   for (let c = 0; c < MATCH3_COLS; c++) {
-    let run = 1;
+    let runStart = 0;
     for (let r = 1; r <= MATCH3_ROWS; r++) {
-      const same = r < MATCH3_ROWS && match3Grid[r][c] === match3Grid[r-1][c] && match3Grid[r][c] !== null;
-      if (same) { run++; }
-      else {
-        if (run >= 3) for (let k = r-run; k < r; k++) matched.add(k+','+c);
-        run = 1;
+      const curTile  = r < MATCH3_ROWS ? match3Grid[r][c] : null;
+      const prevTile = match3Grid[r-1][c];
+      const same = curTile && prevTile && curTile.type === prevTile.type;
+      if (!same) {
+        const len = r - runStart;
+        if (len >= 3) {
+          const cells = [];
+          for (let k = runStart; k < r; k++) cells.push({ row: k, col: c });
+          runs.push({ cells });
+        }
+        runStart = r;
       }
     }
   }
-  return Array.from(matched).map(s => {
-    const [row, col] = s.split(',').map(Number);
-    return { row, col };
-  });
+  return runs;
 }
 
-function resolveMatch3() {
-  const matches = findMatch3Matches();
-  if (matches.length === 0) {
+// ===== 解決（消滅→落下→連鎖） =====
+function resolveMatch3(forcedRows) {
+  const runs = findMatch3Runs();
+  const matchedCells = new Set();
+  const upgrades = [];
+
+  runs.forEach(run => {
+    run.cells.forEach(({row,col}) => matchedCells.add(row+','+col));
+    if (run.cells.length >= 4) {
+      const mid = run.cells[Math.floor(run.cells.length/2)];
+      upgrades.push(mid);
+    }
+  });
+
+  (forcedRows || []).forEach(row => {
+    for (let c = 0; c < MATCH3_COLS; c++) {
+      if (match3Grid[row][c]) matchedCells.add(row+','+c);
+    }
+  });
+
+  if (matchedCells.size === 0) {
     match3Busy = false;
     checkMatch3EndState();
     return;
   }
+
   match3ComboChain++;
-  const gained = matches.length * 10 * match3ComboChain;
+  upgrades.forEach(({row,col}) => matchedCells.delete(row+','+col));
+
+  const matchArr = Array.from(matchedCells).map(s => {
+    const [row, col] = s.split(',').map(Number);
+    return { row, col };
+  });
+
+  const gained = matchArr.length * 10 * match3ComboChain;
   match3Score += gained;
   if (match3Score > match3Best) {
     match3Best = match3Score;
@@ -1563,68 +1744,112 @@ function resolveMatch3() {
     document.getElementById('match3-best').textContent = match3Best;
   }
   updateMatch3Hud();
-  if (match3ComboChain >= 2) {
-    triggerScreenShake(1);
-    triggerVibration([15]);
-  }
+  if (match3ComboChain >= 2) { triggerScreenShake(1); triggerVibration([15]); }
 
-  matches.forEach(({ row, col }) => { match3Grid[row][col] = null; });
-  renderMatch3();
+  // 稲妻タイルへの昇格
+  upgrades.forEach(({row,col}) => {
+    const tile = match3Grid[row][col];
+    if (tile) {
+      tile.special = 'lightning';
+      spawnMatch3ClearEffect(row, col, tile.type, true);
+      tile.scale = 0.3;
+      addMatch3Tween(260, (t) => { tile.scale = 0.3 + 0.7*easeOutQuad(t); }, null);
+    }
+  });
 
-  setTimeout(() => {
-    applyMatch3Gravity();
-    renderMatch3();
-    setTimeout(resolveMatch3, 200);
-  }, 200);
+  // 消去対象の中に稲妻タイルがあれば、その行を次の連鎖で追加爆破
+  const chainForcedRows = [];
+  matchArr.forEach(({row,col}) => {
+    const tile = match3Grid[row][col];
+    if (tile && tile.special === 'lightning') chainForcedRows.push(row);
+    if (tile) spawnMatch3ClearEffect(row, col, tile.type, false);
+  });
+
+  const clearingTiles = matchArr.map(({row,col}) => match3Grid[row][col]).filter(Boolean);
+  addMatch3Tween(220, (t) => {
+    clearingTiles.forEach(tile => { tile.scale = 1 - t; tile.alpha = 1 - t; });
+  }, () => {
+    matchArr.forEach(({row,col}) => { match3Grid[row][col] = null; });
+    animateMatch3Gravity(() => {
+      resolveMatch3(chainForcedRows);
+    });
+  });
 }
 
-function applyMatch3Gravity() {
+// ===== 落下アニメーション =====
+function animateMatch3Gravity(callback) {
+  const moves = [];
   for (let c = 0; c < MATCH3_COLS; c++) {
     let write = MATCH3_ROWS - 1;
     for (let r = MATCH3_ROWS - 1; r >= 0; r--) {
-      if (match3Grid[r][c] !== null) {
-        match3Grid[write][c] = match3Grid[r][c];
-        if (write !== r) match3Grid[r][c] = null;
+      const tile = match3Grid[r][c];
+      if (tile) {
+        if (write !== r) {
+          match3Grid[write][c] = tile;
+          match3Grid[r][c] = null;
+          tile.row = write; tile.col = c;
+          moves.push({ tile, fromY: tile.visY });
+        }
         write--;
       }
     }
+    let spawnOffset = 1;
     for (let r = write; r >= 0; r--) {
-      match3Grid[r][c] = Math.floor(Math.random() * MATCH3_TYPES);
+      const type = Math.floor(Math.random() * MATCH3_TYPES);
+      const tile = makeMatch3Tile(type, r, c);
+      tile.visY = -spawnOffset;
+      match3Grid[r][c] = tile;
+      moves.push({ tile, fromY: -spawnOffset });
+      spawnOffset++;
     }
   }
+
+  if (moves.length === 0) { callback(); return; }
+
+  addMatch3Tween(280, (t) => {
+    const e = easeInQuad(t);
+    moves.forEach(({ tile, fromY }) => {
+      tile.visY = fromY + (tile.row - fromY) * e;
+      tile.visX = tile.col;
+    });
+  }, () => {
+    moves.forEach(({ tile }) => { tile.visY = tile.row; tile.visX = tile.col; });
+    callback();
+  });
 }
 
-function checkMatch3EndState() {
-  if (!hasAnyMatch3Move()) {
-    generateMatch3Board();
-    renderMatch3();
-  }
-  if (match3Moves <= 0) {
-    setTimeout(showMatch3Result, 400);
-  }
+// ===== 手詰まりチェック =====
+function testMatch3SwapType(r1, c1, r2, c2) {
+  const tA = match3Grid[r1][c1], tB = match3Grid[r2][c2];
+  if (!tA || !tB) return false;
+  const tmp = tA.type; tA.type = tB.type; tB.type = tmp;
+  const has = findMatch3Runs().length > 0;
+  const tmp2 = tA.type; tA.type = tB.type; tB.type = tmp2;
+  return has;
 }
 
 function hasAnyMatch3Move() {
   for (let r = 0; r < MATCH3_ROWS; r++) {
     for (let c = 0; c < MATCH3_COLS; c++) {
-      if (c < MATCH3_COLS - 1) {
-        swapMatch3Tiles({ row: r, col: c }, { row: r, col: c+1 });
-        const has = findMatch3Matches().length > 0;
-        swapMatch3Tiles({ row: r, col: c }, { row: r, col: c+1 });
-        if (has) return true;
-      }
-      if (r < MATCH3_ROWS - 1) {
-        swapMatch3Tiles({ row: r, col: c }, { row: r+1, col: c });
-        const has = findMatch3Matches().length > 0;
-        swapMatch3Tiles({ row: r, col: c }, { row: r+1, col: c });
-        if (has) return true;
-      }
+      if (c < MATCH3_COLS - 1 && testMatch3SwapType(r, c, r, c+1)) return true;
+      if (r < MATCH3_ROWS - 1 && testMatch3SwapType(r, c, r+1, c)) return true;
     }
   }
   return false;
 }
 
+function checkMatch3EndState() {
+  if (!hasAnyMatch3Move()) {
+    generateMatch3Board();
+  }
+  if (match3Moves <= 0) {
+    setTimeout(showMatch3Result, 500);
+  }
+}
+
 function showMatch3Result() {
+  if (match3AnimHandle) cancelAnimationFrame(match3AnimHandle);
+  match3AnimHandle = null;
   document.getElementById('match3-screen').classList.add('hidden');
   document.getElementById('match3-result-screen').classList.remove('hidden');
   document.getElementById('match3-result-score').textContent = match3Score;
