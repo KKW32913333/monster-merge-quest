@@ -1,55 +1,8 @@
 /* ===== RESET ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ===== テーマ定義（デフォルト = 業火の火山地帯） ===== */
+/* ===== テーマ定義（デフォルト = 漆黒の地下大迷宮） ===== */
 :root {
-  --accent-gold: #ff9a1f;
-  --accent-gold-bright: #ffd23f;
-  --accent-purple: #8b2a2a;
-  --accent-blue: #b3673a;
-  --accent-red:  #ff3b1f;
-  --accent-green:#43a047;
-  --panel-border:#c8541a;
-  --panel-bg:    rgba(30,14,10,0.92);
-  --text-primary:#ffe8d6;
-  --text-dim:    #d19a6f;
-  --danger-color:#ff3b1f;
-  --chain-color: #ff9a1f;
-  --font-game:   'Georgia', serif;
-  --font-ui:     'Arial Rounded MT Bold', 'Arial', sans-serif;
-
-  --bg-app:      linear-gradient(180deg, #2a0a05 0%, #4a1408 45%, #1a0502 100%);
-  --bg-container:linear-gradient(180deg, #3d1006 0%, #1a0502 100%);
-  --bg-floor:    linear-gradient(180deg, #ff6b1a 0%, #7a1f05 55%, #1a0502 100%);
-  --floor-shadow:0 -3px 10px rgba(255,107,26,0.3);
-  --bg-ambient:
-    radial-gradient(ellipse 60px 30px at 20% 50%, rgba(255,150,60,0.25) 0%, transparent 100%),
-    radial-gradient(ellipse 80px 35px at 60% 40%, rgba(255,100,30,0.2) 0%, transparent 100%),
-    radial-gradient(ellipse 50px 25px at 85% 60%, rgba(255,180,80,0.22) 0%, transparent 100%);
-  --bg-title:    linear-gradient(180deg, #2a0a05 0%, #4a1408 45%, #1a0502 100%);
-  --bg-box:      rgba(30,14,10,0.92);
-  --bg-overlay:  rgba(20,4,0,0.65);
-  --bg-overlay-confirm: rgba(20,4,0,0.5);
-
-  --torch-display: block;
-  --torch-glow: drop-shadow(0 0 10px #ff6b1a) drop-shadow(0 0 18px #ff3b1f);
-
-  --grad-btn-primary: linear-gradient(180deg, #ff6b1a 0%, #d43d0f 100%);
-  --shadow-solid-primary: #8a2408;
-  --grad-btn-secondary: linear-gradient(180deg, #a33a1a 0%, #7a1f05 100%);
-  --shadow-solid-secondary: #4a1002;
-  --grad-btn-nav: linear-gradient(180deg, #6b4530 0%, #4a2e1c 100%);
-  --shadow-solid-nav: #2a1a10;
-  --grad-btn-danger: linear-gradient(180deg, #ff3b1f 0%, #b3200a 100%);
-  --shadow-solid-danger: #6b1400;
-
-  --glow-warm: rgba(255,154,31,0.5);
-  --glow-warm-strong: rgba(255,154,31,0.65);
-  --glow-bright: rgba(255,210,63,0.5);
-  --glow-danger: rgba(255,59,31,0.55);
-}
-
-html[data-theme="dungeon"] {
   --accent-gold: #ffb347;
   --accent-gold-bright: #ffd77a;
   --accent-purple: #b388ff;
@@ -62,6 +15,8 @@ html[data-theme="dungeon"] {
   --text-dim:    #a992c4;
   --danger-color:#ff5548;
   --chain-color: #ffb347;
+  --font-game:   'Georgia', serif;
+  --font-ui:     'Arial Rounded MT Bold', 'Arial', sans-serif;
 
   --bg-app:      linear-gradient(180deg, #241832 0%, #120b18 100%);
   --bg-container:linear-gradient(180deg, #2c1f3d 0%, #120b18 100%);
@@ -92,6 +47,51 @@ html[data-theme="dungeon"] {
   --glow-warm-strong: rgba(255,179,71,0.65);
   --glow-bright: rgba(255,215,122,0.5);
   --glow-danger: rgba(255,85,72,0.55);
+}
+
+html[data-theme="volcanic"] {
+  --accent-gold: #ff9a1f;
+  --accent-gold-bright: #ffd23f;
+  --accent-purple: #8b2a2a;
+  --accent-blue: #b3673a;
+  --accent-red:  #ff3b1f;
+  --accent-green:#43a047;
+  --panel-border:#c8541a;
+  --panel-bg:    rgba(30,14,10,0.92);
+  --text-primary:#ffe8d6;
+  --text-dim:    #d19a6f;
+  --danger-color:#ff3b1f;
+  --chain-color: #ff9a1f;
+
+  --bg-app:      linear-gradient(180deg, #2a0a05 0%, #4a1408 45%, #1a0502 100%);
+  --bg-container:linear-gradient(180deg, #3d1006 0%, #1a0502 100%);
+  --bg-floor:    linear-gradient(180deg, #ff6b1a 0%, #7a1f05 55%, #1a0502 100%);
+  --floor-shadow:0 -3px 10px rgba(255,107,26,0.3);
+  --bg-ambient:
+    radial-gradient(ellipse 60px 30px at 20% 50%, rgba(255,150,60,0.25) 0%, transparent 100%),
+    radial-gradient(ellipse 80px 35px at 60% 40%, rgba(255,100,30,0.2) 0%, transparent 100%),
+    radial-gradient(ellipse 50px 25px at 85% 60%, rgba(255,180,80,0.22) 0%, transparent 100%);
+  --bg-title:    linear-gradient(180deg, #2a0a05 0%, #4a1408 45%, #1a0502 100%);
+  --bg-box:      rgba(30,14,10,0.92);
+  --bg-overlay:  rgba(20,4,0,0.65);
+  --bg-overlay-confirm: rgba(20,4,0,0.5);
+
+  --torch-display: block;
+  --torch-glow: drop-shadow(0 0 10px #ff6b1a) drop-shadow(0 0 18px #ff3b1f);
+
+  --grad-btn-primary: linear-gradient(180deg, #ff6b1a 0%, #d43d0f 100%);
+  --shadow-solid-primary: #8a2408;
+  --grad-btn-secondary: linear-gradient(180deg, #a33a1a 0%, #7a1f05 100%);
+  --shadow-solid-secondary: #4a1002;
+  --grad-btn-nav: linear-gradient(180deg, #6b4530 0%, #4a2e1c 100%);
+  --shadow-solid-nav: #2a1a10;
+  --grad-btn-danger: linear-gradient(180deg, #ff3b1f 0%, #b3200a 100%);
+  --shadow-solid-danger: #6b1400;
+
+  --glow-warm: rgba(255,154,31,0.5);
+  --glow-warm-strong: rgba(255,154,31,0.65);
+  --glow-bright: rgba(255,210,63,0.5);
+  --glow-danger: rgba(255,59,31,0.55);
 }
 
 html[data-theme="ice"] {
@@ -615,7 +615,7 @@ button {
   position: fixed; inset: 0;
   background: var(--bg-overlay-confirm);
   display: flex; align-items: center; justify-content: center;
-  z-index: 150; backdrop-filter: blur(4px);
+  z-index: 300; backdrop-filter: blur(4px);
 }
 #confirm-box {
   background: var(--bg-box);
@@ -881,4 +881,49 @@ button {
   width: 100%; padding: 10px;
   background: rgba(0,0,0,0.3); border: 2px solid var(--panel-border);
   color: var(--text-dim); border-radius: 12px;
+}
+
+/* ===== PC（デスクトップ幅）レイアウト調整 =====
+   モバイル表示はそのまま。画面に余裕がある場合のみ、盤面や
+   パネル類の最大幅・フォントサイズを拡大して画面を有効活用する。 */
+@media (min-width: 700px) {
+  #app { padding: 20px; gap: 12px; }
+
+  #game-header,
+  #game-container,
+  #evolution-bar {
+    max-width: 620px;
+  }
+
+  #game-header { padding: 12px 22px; }
+  #game-title { font-size: 1.05rem; }
+  #score-display, #best-display, #chain-display { font-size: 1.4rem; }
+  .score-label { font-size: 0.62rem; }
+
+  #next-canvas, #hold-canvas { width: 76px; height: 76px; }
+
+  #evolution-bar { padding: 10px 16px; }
+  .evo-item { min-width: 42px; }
+  .evo-name { font-size: 0.52rem; }
+  .evo-label { font-size: 0.68rem; }
+
+  #header-btn-row button, #restart-btn, #home-btn { font-size: 0.68rem; padding: 5px 12px; }
+
+  #title-box, #gameover-box, #ranking-box, #theme-box,
+  #difficulty-box, #match3-box, #confirm-box {
+    max-width: 460px;
+  }
+  #match3-canvas { max-width: 460px; }
+  #title-logo { width: 140px; height: 140px; }
+  #title-name { font-size: 1.9rem; }
+}
+
+@media (min-width: 1200px) {
+  #game-header,
+  #game-container,
+  #evolution-bar {
+    max-width: 720px;
+  }
+  #game-title { font-size: 1.15rem; }
+  #score-display, #best-display, #chain-display { font-size: 1.6rem; }
 }

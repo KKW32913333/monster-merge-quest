@@ -1367,7 +1367,8 @@ function closeMatch3ToTitle() {
 function initMatch3Canvas() {
   match3Canvas = document.getElementById('match3-canvas');
   match3Ctx = match3Canvas.getContext('2d');
-  const cssWidth = Math.min((containerEl ? containerEl.clientWidth : 360) - 4, 360);
+  const desktopCap = window.innerWidth >= 700 ? 460 : 360;
+  const cssWidth = Math.min((containerEl ? containerEl.clientWidth : desktopCap) - 4, desktopCap);
   match3TileSize = Math.floor(cssWidth / MATCH3_COLS);
   const cssW = match3TileSize * MATCH3_COLS;
   const cssH = match3TileSize * MATCH3_ROWS;
@@ -1931,7 +1932,7 @@ function updateThemeActiveState(themeId) {
 }
 
 function showThemeScreen() {
-  const current = localStorage.getItem('monsterMergeTheme') || 'volcanic';
+  const current = localStorage.getItem('monsterMergeTheme') || 'dungeon';
   updateThemeActiveState(current);
   document.getElementById('theme-screen').classList.remove('hidden');
 }
