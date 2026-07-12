@@ -1336,8 +1336,8 @@ function showDifficultyScreen() {
 }
 
 // ===== ルーンマッチ（マッチ3パズル） =====
-const MATCH3_COLS = 7;
-const MATCH3_ROWS = 9;
+const MATCH3_COLS = 6;
+const MATCH3_ROWS = 8;
 const MATCH3_TYPES = 10; // MONSTERS全10体（スライム〜魔王）を使用
 const MATCH3_START_MOVES = 25;
 
