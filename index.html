@@ -119,7 +119,7 @@
         </div>
 
         <button id="start-btn">⚔️ 冒険を始める！</button>
-        <button id="arena-btn">🛡️ バトルアリーナ</button>
+        <button id="match3-btn">💎 ルーンマッチ</button>
         <button id="title-ranking-btn">🏆 殿堂ランキング</button>
         <button id="difficulty-btn">🎚️ 難易度: <span id="difficulty-label">中級</span></button>
         <button id="theme-btn">🎨 テーマを選ぶ</button>
@@ -199,65 +199,28 @@
       </div>
     </div>
 
-    <!-- バトルアリーナ：ステージ/チーム選択 -->
-    <div id="arena-screen" class="hidden">
-      <div id="arena-box">
-        <div id="arena-title">🛡️ バトルアリーナ</div>
-
-        <div id="arena-step-stage">
-          <div class="arena-subtitle">挑戦する闘技場を選択</div>
-          <div id="arena-stage-list"></div>
+    <!-- ルーンマッチ：マッチ3パズル -->
+    <div id="match3-screen" class="hidden">
+      <div id="match3-box">
+        <div id="match3-header">
+          <div class="match3-stat"><span class="score-label">SCORE</span><span id="match3-score">0</span></div>
+          <div class="match3-stat"><span class="score-label">MOVES</span><span id="match3-moves">20</span></div>
+          <div class="match3-stat"><span class="score-label">BEST</span><span id="match3-best">0</span></div>
         </div>
-
-        <div id="arena-step-team" class="hidden">
-          <div class="arena-subtitle">チームを3体選択（<span id="team-select-count">0</span>/3）</div>
-          <div id="arena-team-list"></div>
-          <button id="arena-team-confirm-btn" disabled>⚔️ 出撃</button>
-          <button id="arena-team-back-btn">← 闘技場選択に戻る</button>
-        </div>
-
-        <button id="arena-close-btn">閉じる</button>
+        <canvas id="match3-canvas"></canvas>
+        <button id="match3-back-btn">🏰 タイトルに戻る</button>
       </div>
     </div>
 
-    <!-- バトル本体 -->
-    <div id="battle-screen" class="hidden">
-      <div id="battle-box">
-        <div id="battle-stage-name"></div>
-
-        <div id="battle-field">
-          <div class="battle-side">
-            <canvas id="enemy-canvas" width="100" height="100"></canvas>
-            <div class="battle-hp-bar"><div id="enemy-hp-fill" class="battle-hp-fill"></div></div>
-            <div id="enemy-hp-text" class="battle-hp-text"></div>
-            <div id="enemy-bench" class="battle-bench"></div>
-          </div>
-          <div id="battle-vs">VS</div>
-          <div class="battle-side">
-            <canvas id="player-canvas" width="100" height="100"></canvas>
-            <div class="battle-hp-bar"><div id="player-hp-fill" class="battle-hp-fill"></div></div>
-            <div id="player-hp-text" class="battle-hp-text"></div>
-            <div id="player-bench" class="battle-bench"></div>
-          </div>
-        </div>
-
-        <div id="battle-log"></div>
-
-        <div id="battle-actions">
-          <button id="battle-attack-btn">⚔️ 攻撃</button>
-          <button id="battle-flee-btn">🏳️ 撤退</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- バトル結果 -->
-    <div id="battle-result-screen" class="hidden">
-      <div id="battle-result-box">
-        <div id="battle-result-title"></div>
-        <div id="battle-result-msg"></div>
-        <button id="battle-result-next-btn">次の闘技場へ</button>
-        <button id="battle-result-retry-btn">もう一度挑戦</button>
-        <button id="battle-result-close-btn">🏰 タイトルに戻る</button>
+    <!-- ルーンマッチ：結果画面 -->
+    <div id="match3-result-screen" class="hidden">
+      <div id="match3-result-box">
+        <div id="match3-result-title">🎉 ゲーム終了！</div>
+        <div id="match3-result-score-label">SCORE</div>
+        <div id="match3-result-score">0</div>
+        <div id="match3-result-best-label">BEST: <span id="match3-result-best">0</span></div>
+        <button id="match3-retry-btn">🔄 もう一度</button>
+        <button id="match3-result-close-btn">🏰 タイトルに戻る</button>
       </div>
     </div>
   </div>

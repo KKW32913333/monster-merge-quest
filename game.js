@@ -591,22 +591,6 @@ let heldIdx  = null;
 let canHold  = true;
 let holdCanvas, holdCtx;
 
-// ===== バトルアリーナ =====
-const ARENA_STAGES = [
-  { id: 1, name: '第1闘技場：草原の群れ',   enemyTeam: [0, 0, 1] },
-  { id: 2, name: '第2闘技場：夜の森',       enemyTeam: [1, 2, 2] },
-  { id: 3, name: '第3闘技場：亡者の谷',     enemyTeam: [3, 3, 4] },
-  { id: 4, name: '第4闘技場：荒野の覇者',   enemyTeam: [4, 5, 5] },
-  { id: 5, name: '第5闘技場：魔女の結界',   enemyTeam: [6, 6, 7] },
-  { id: 6, name: '最終闘技場：魔王軍',      enemyTeam: [8, 9, 9] },
-];
-let unlockedArenaStage = parseInt(localStorage.getItem('monsterMergeArenaStage') || '1');
-let selectedStage = null;
-let teamSelection = [];
-let battleState = null;
-let battleBusy = false;
-let playerBattleCtx, enemyBattleCtx;
-
 // ===== デイリーミッション =====
 const MISSION_POOL = [
   { id: 'merge_skeleton', desc: 'スケルトンを5体誕生させよう', target: 5,    trackIdx: 3 },
@@ -643,21 +627,6 @@ function init() {
   holdCanvas.style.width  = nextCssSize + 'px';
   holdCanvas.style.height = nextCssSize + 'px';
   holdCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
-
-  // バトル用キャンバス（プレイヤー/敵）
-  const battleCssSize = 100;
-  const playerBattleCanvas = document.getElementById('player-canvas');
-  const enemyBattleCanvas  = document.getElementById('enemy-canvas');
-  [playerBattleCanvas, enemyBattleCanvas].forEach(c => {
-    c.width  = battleCssSize * DPR;
-    c.height = battleCssSize * DPR;
-    c.style.width  = battleCssSize + 'px';
-    c.style.height = battleCssSize + 'px';
-  });
-  playerBattleCtx = playerBattleCanvas.getContext('2d');
-  enemyBattleCtx  = enemyBattleCanvas.getContext('2d');
-  playerBattleCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  enemyBattleCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
@@ -1366,264 +1335,299 @@ function showDifficultyScreen() {
   document.getElementById('difficulty-screen').classList.remove('hidden');
 }
 
-// ===== バトルアリーナ =====
-function getCardStats(idx) {
-  const mon = MONSTERS[idx];
-  return {
-    idx,
-    name: mon.name,
-    magic: mon.magic,
-    maxHp: 40 + idx * 20,
-    atk: 10 + idx * 5,
-  };
-}
+// ===== ルーンマッチ（マッチ3パズル） =====
+const MATCH3_COLS = 6;
+const MATCH3_ROWS = 8;
+const MATCH3_TYPES = 6; // MONSTERS[0..5]（スライム〜ミノタウロス）を使用
+const MATCH3_START_MOVES = 20;
 
-function showArenaScreen() {
+let match3Canvas, match3Ctx;
+let match3Grid = [];
+let match3TileSize = 0;
+let match3Score = 0;
+let match3Moves = MATCH3_START_MOVES;
+let match3Best = parseInt(localStorage.getItem('monsterMergeMatch3Best') || '0');
+let match3Selected = null;
+let match3Busy = false;
+let match3ComboChain = 0;
+
+function openMatch3() {
   document.getElementById('title-screen').classList.add('hidden');
-  document.getElementById('arena-screen').classList.remove('hidden');
-  showArenaStageStep();
+  document.getElementById('match3-screen').classList.remove('hidden');
+  initMatch3Canvas();
+  startMatch3Game();
 }
 
-function closeArenaScreen() {
-  document.getElementById('arena-screen').classList.add('hidden');
+function closeMatch3ToTitle() {
+  document.getElementById('match3-screen').classList.add('hidden');
+  document.getElementById('match3-result-screen').classList.add('hidden');
   document.getElementById('title-screen').classList.remove('hidden');
 }
 
-function showArenaStageStep() {
-  document.getElementById('arena-step-team').classList.add('hidden');
-  document.getElementById('arena-step-stage').classList.remove('hidden');
-  const list = document.getElementById('arena-stage-list');
-  list.innerHTML = '';
-  ARENA_STAGES.forEach(stage => {
-    const locked = stage.id > unlockedArenaStage;
-    const btn = document.createElement('button');
-    btn.className = 'arena-stage-item' + (locked ? ' locked' : '');
-    btn.disabled = locked;
-    btn.innerHTML =
-      `<span class="arena-stage-name">${locked ? '🔒 ' : ''}${stage.name}</span>` +
-      `<span class="arena-stage-enemies">${stage.enemyTeam.map(i => MONSTERS[i].name).join(' / ')}</span>`;
-    btn.addEventListener('click', () => {
-      selectedStage = stage;
-      showArenaTeamStep();
-    });
-    list.appendChild(btn);
-  });
-}
+function initMatch3Canvas() {
+  match3Canvas = document.getElementById('match3-canvas');
+  match3Ctx = match3Canvas.getContext('2d');
+  const cssWidth = Math.min((containerEl ? containerEl.clientWidth : 360) - 4, 360);
+  match3TileSize = Math.floor(cssWidth / MATCH3_COLS);
+  const cssW = match3TileSize * MATCH3_COLS;
+  const cssH = match3TileSize * MATCH3_ROWS;
+  match3Canvas.width  = cssW * DPR;
+  match3Canvas.height = cssH * DPR;
+  match3Canvas.style.width  = cssW + 'px';
+  match3Canvas.style.height = cssH + 'px';
+  match3Ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-function showArenaTeamStep() {
-  teamSelection = [];
-  document.getElementById('arena-step-stage').classList.add('hidden');
-  document.getElementById('arena-step-team').classList.remove('hidden');
-  document.getElementById('team-select-count').textContent = '0';
-
-  const list = document.getElementById('arena-team-list');
-  list.innerHTML = '';
-  MONSTERS.forEach((mon, idx) => {
-    const item = document.createElement('button');
-    item.className = 'arena-card-item';
-    item.dataset.idx = idx;
-
-    const canvas = document.createElement('canvas');
-    const cssSize = 44;
-    canvas.width = cssSize * DPR; canvas.height = cssSize * DPR;
-    canvas.style.width = cssSize + 'px'; canvas.style.height = cssSize + 'px';
-    const cctx = canvas.getContext('2d');
-    cctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    const r = 18, cx = 22, cy = 22;
-    cctx.save(); cctx.translate(cx, cy);
-    cctx.beginPath(); cctx.arc(0, 0, r, 0, Math.PI*2); cctx.clip();
-    renderMonsterArt(cctx, mon, r);
-    cctx.restore();
-
-    const stats = getCardStats(idx);
-    const label = document.createElement('div');
-    label.className = 'arena-card-name';
-    label.textContent = mon.name;
-    const statLine = document.createElement('div');
-    statLine.className = 'arena-card-stats';
-    statLine.textContent = `HP${stats.maxHp} / ATK${stats.atk}`;
-
-    item.appendChild(canvas);
-    item.appendChild(label);
-    item.appendChild(statLine);
-    item.addEventListener('click', () => toggleTeamSelection(idx, item));
-    list.appendChild(item);
-  });
-  updateTeamConfirmButton();
-}
-
-function toggleTeamSelection(idx, el) {
-  const pos = teamSelection.indexOf(idx);
-  if (pos >= 0) {
-    teamSelection.splice(pos, 1);
-    el.classList.remove('selected');
-  } else {
-    if (teamSelection.length >= 3) return;
-    teamSelection.push(idx);
-    el.classList.add('selected');
+  if (!match3Canvas.dataset.bound) {
+    match3Canvas.addEventListener('pointerdown', onMatch3PointerDown);
+    match3Canvas.dataset.bound = '1';
   }
-  document.getElementById('team-select-count').textContent = teamSelection.length;
-  updateTeamConfirmButton();
 }
 
-function updateTeamConfirmButton() {
-  document.getElementById('arena-team-confirm-btn').disabled = teamSelection.length !== 3;
+function startMatch3Game() {
+  match3Score = 0;
+  match3Moves = MATCH3_START_MOVES;
+  match3Selected = null;
+  match3Busy = false;
+  document.getElementById('match3-best').textContent = match3Best;
+  updateMatch3Hud();
+  generateMatch3Board();
+  renderMatch3();
 }
 
-function startBattle() {
-  document.getElementById('arena-screen').classList.add('hidden');
-  document.getElementById('battle-result-screen').classList.add('hidden');
-  document.getElementById('battle-screen').classList.remove('hidden');
-  document.getElementById('battle-stage-name').textContent = selectedStage.name;
-
-  battleState = {
-    player: teamSelection.map(idx => ({ ...getCardStats(idx), hp: getCardStats(idx).maxHp })),
-    enemy: selectedStage.enemyTeam.map(idx => ({ ...getCardStats(idx), hp: getCardStats(idx).maxHp })),
-    playerActive: 0,
-    enemyActive: 0,
-  };
-  battleBusy = false;
-  document.getElementById('battle-log').innerHTML = '';
-  renderBattle();
-  addBattleLog(`${selectedStage.name}の戦いが始まった！`);
+function generateMatch3Board() {
+  match3Grid = [];
+  for (let r = 0; r < MATCH3_ROWS; r++) {
+    const row = [];
+    for (let c = 0; c < MATCH3_COLS; c++) {
+      let t;
+      do {
+        t = Math.floor(Math.random() * MATCH3_TYPES);
+      } while (
+        (c >= 2 && row[c-1] === t && row[c-2] === t) ||
+        (r >= 2 && match3Grid[r-1][c] === t && match3Grid[r-2][c] === t)
+      );
+      row.push(t);
+    }
+    match3Grid.push(row);
+  }
 }
 
-function currentPlayerCard() { return battleState.player[battleState.playerActive]; }
-function currentEnemyCard()  { return battleState.enemy[battleState.enemyActive]; }
-
-function renderBattle() {
-  drawBattleCard(playerBattleCtx, currentPlayerCard());
-  drawBattleCard(enemyBattleCtx, currentEnemyCard());
-  updateHpBar('player', currentPlayerCard());
-  updateHpBar('enemy', currentEnemyCard());
-  renderBench('player', battleState.player, battleState.playerActive);
-  renderBench('enemy', battleState.enemy, battleState.enemyActive);
+function updateMatch3Hud() {
+  document.getElementById('match3-score').textContent = match3Score;
+  document.getElementById('match3-moves').textContent = match3Moves;
 }
 
-function drawBattleCard(ctx, card) {
-  const size = 100, cx = size/2, cy = size/2, r = 40;
-  ctx.clearRect(0, 0, size, size);
-  const mon = MONSTERS[card.idx];
-  const glow = ctx.createRadialGradient(cx, cy, r*0.6, cx, cy, r*1.3);
-  glow.addColorStop(0, 'transparent'); glow.addColorStop(1, mon.magic + '55');
-  ctx.beginPath(); ctx.arc(cx, cy, r*1.3, 0, Math.PI*2); ctx.fillStyle = glow; ctx.fill();
-  ctx.save(); ctx.translate(cx, cy);
-  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.clip();
-  renderMonsterArt(ctx, mon, r);
-  ctx.restore();
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
-  ctx.strokeStyle = mon.magic + 'cc'; ctx.lineWidth = 2; ctx.stroke();
+function renderMatch3() {
+  const ts = match3TileSize;
+  match3Ctx.clearRect(0, 0, MATCH3_COLS*ts, MATCH3_ROWS*ts);
+  for (let r = 0; r < MATCH3_ROWS; r++) {
+    for (let c = 0; c < MATCH3_COLS; c++) {
+      const t = match3Grid[r][c];
+      if (t === null || t === undefined) continue;
+      drawMatch3Tile(r, c, t);
+    }
+  }
 }
 
-function updateHpBar(side, card) {
-  const pct = Math.max(0, card.hp / card.maxHp) * 100;
-  document.getElementById(`${side}-hp-fill`).style.width = pct + '%';
-  document.getElementById(`${side}-hp-text`).textContent =
-    `${card.name}  ${Math.max(0, Math.round(card.hp))}/${card.maxHp}`;
+function match3RoundRectPath(ctx, x, y, w, h, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x+radius, y);
+  ctx.arcTo(x+w, y, x+w, y+h, radius);
+  ctx.arcTo(x+w, y+h, x, y+h, radius);
+  ctx.arcTo(x, y+h, x, y, radius);
+  ctx.arcTo(x, y, x+w, y, radius);
+  ctx.closePath();
 }
 
-function renderBench(side, team, activeIdx) {
-  const el = document.getElementById(`${side}-bench`);
-  el.innerHTML = '';
-  team.forEach((card, i) => {
-    const dot = document.createElement('span');
-    dot.className = 'bench-dot';
-    dot.style.background = card.hp > 0 ? card.magic : '#333';
-    if (i === activeIdx) dot.classList.add('bench-active');
-    if (card.hp <= 0) dot.classList.add('bench-fainted');
-    dot.title = card.name;
-    el.appendChild(dot);
+function drawMatch3Tile(r, c, idx) {
+  const ts = match3TileSize;
+  const cx = c*ts + ts/2, cy = r*ts + ts/2;
+  const mon = MONSTERS[idx];
+  const isSel = match3Selected && match3Selected.row === r && match3Selected.col === c;
+
+  match3Ctx.fillStyle = isSel ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)';
+  match3RoundRectPath(match3Ctx, c*ts+2, r*ts+2, ts-4, ts-4, 8);
+  match3Ctx.fill();
+  if (isSel) {
+    match3Ctx.strokeStyle = mon.magic;
+    match3Ctx.lineWidth = 2;
+    match3RoundRectPath(match3Ctx, c*ts+2, r*ts+2, ts-4, ts-4, 8);
+    match3Ctx.stroke();
+  }
+
+  const r2 = ts*0.38;
+  match3Ctx.save();
+  match3Ctx.translate(cx, cy);
+  match3Ctx.beginPath(); match3Ctx.arc(0, 0, r2, 0, Math.PI*2); match3Ctx.clip();
+  renderMonsterArt(match3Ctx, mon, r2);
+  match3Ctx.restore();
+}
+
+function onMatch3PointerDown(e) {
+  if (match3Busy || match3Moves <= 0) return;
+  const rect = match3Canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const col = Math.floor(x / match3TileSize);
+  const row = Math.floor(y / match3TileSize);
+  if (row < 0 || row >= MATCH3_ROWS || col < 0 || col >= MATCH3_COLS) return;
+
+  if (!match3Selected) {
+    match3Selected = { row, col };
+    renderMatch3();
+    return;
+  }
+  if (match3Selected.row === row && match3Selected.col === col) {
+    match3Selected = null;
+    renderMatch3();
+    return;
+  }
+
+  const isAdjacent = Math.abs(match3Selected.row - row) + Math.abs(match3Selected.col - col) === 1;
+  if (isAdjacent) {
+    const a = match3Selected, b = { row, col };
+    match3Selected = null;
+    attemptMatch3Swap(a, b);
+  } else {
+    match3Selected = { row, col };
+    renderMatch3();
+  }
+}
+
+function attemptMatch3Swap(a, b) {
+  swapMatch3Tiles(a, b);
+  const matches = findMatch3Matches();
+  if (matches.length === 0) {
+    swapMatch3Tiles(a, b);
+    renderMatch3();
+    return;
+  }
+  match3Moves--;
+  updateMatch3Hud();
+  match3Busy = true;
+  match3ComboChain = 0;
+  renderMatch3();
+  setTimeout(resolveMatch3, 150);
+}
+
+function swapMatch3Tiles(a, b) {
+  const tmp = match3Grid[a.row][a.col];
+  match3Grid[a.row][a.col] = match3Grid[b.row][b.col];
+  match3Grid[b.row][b.col] = tmp;
+}
+
+function findMatch3Matches() {
+  const matched = new Set();
+  for (let r = 0; r < MATCH3_ROWS; r++) {
+    let run = 1;
+    for (let c = 1; c <= MATCH3_COLS; c++) {
+      const same = c < MATCH3_COLS && match3Grid[r][c] === match3Grid[r][c-1] && match3Grid[r][c] !== null;
+      if (same) { run++; }
+      else {
+        if (run >= 3) for (let k = c-run; k < c; k++) matched.add(r+','+k);
+        run = 1;
+      }
+    }
+  }
+  for (let c = 0; c < MATCH3_COLS; c++) {
+    let run = 1;
+    for (let r = 1; r <= MATCH3_ROWS; r++) {
+      const same = r < MATCH3_ROWS && match3Grid[r][c] === match3Grid[r-1][c] && match3Grid[r][c] !== null;
+      if (same) { run++; }
+      else {
+        if (run >= 3) for (let k = r-run; k < r; k++) matched.add(k+','+c);
+        run = 1;
+      }
+    }
+  }
+  return Array.from(matched).map(s => {
+    const [row, col] = s.split(',').map(Number);
+    return { row, col };
   });
 }
 
-function addBattleLog(msg) {
-  const log = document.getElementById('battle-log');
-  const line = document.createElement('div');
-  line.textContent = msg;
-  log.appendChild(line);
-  log.scrollTop = log.scrollHeight;
-  while (log.children.length > 30) log.removeChild(log.firstChild);
-}
+function resolveMatch3() {
+  const matches = findMatch3Matches();
+  if (matches.length === 0) {
+    match3Busy = false;
+    checkMatch3EndState();
+    return;
+  }
+  match3ComboChain++;
+  const gained = matches.length * 10 * match3ComboChain;
+  match3Score += gained;
+  if (match3Score > match3Best) {
+    match3Best = match3Score;
+    localStorage.setItem('monsterMergeMatch3Best', match3Best);
+    document.getElementById('match3-best').textContent = match3Best;
+  }
+  updateMatch3Hud();
+  if (match3ComboChain >= 2) {
+    triggerScreenShake(1);
+    triggerVibration([15]);
+  }
 
-function playerAttack() {
-  if (battleBusy || !battleState) return;
-  battleBusy = true;
-  const atkCard = currentPlayerCard();
-  const defCard = currentEnemyCard();
-  const dmg = Math.round(atkCard.atk * (0.85 + Math.random() * 0.3));
-  defCard.hp -= dmg;
-  addBattleLog(`${atkCard.name}の攻撃！ ${defCard.name}に${dmg}ダメージ！`);
-  triggerScreenShake(1);
-  triggerVibration([20]);
-  renderBattle();
+  matches.forEach(({ row, col }) => { match3Grid[row][col] = null; });
+  renderMatch3();
 
   setTimeout(() => {
-    if (defCard.hp <= 0) {
-      addBattleLog(`敵の${defCard.name}を倒した！`);
-      const nextIdx = battleState.enemy.findIndex(c => c.hp > 0);
-      if (nextIdx === -1) { finishBattle(true); return; }
-      battleState.enemyActive = nextIdx;
-      renderBattle();
-      setTimeout(enemyAttack, 600);
-    } else {
-      setTimeout(enemyAttack, 600);
-    }
-  }, 500);
+    applyMatch3Gravity();
+    renderMatch3();
+    setTimeout(resolveMatch3, 200);
+  }, 200);
 }
 
-function enemyAttack() {
-  const atkCard = currentEnemyCard();
-  const defCard = currentPlayerCard();
-  const dmg = Math.round(atkCard.atk * (0.85 + Math.random() * 0.3));
-  defCard.hp -= dmg;
-  addBattleLog(`敵の${atkCard.name}の攻撃！ ${defCard.name}に${dmg}ダメージ！`);
-  triggerScreenShake(1);
-  triggerVibration([20]);
-  renderBattle();
-
-  setTimeout(() => {
-    if (defCard.hp <= 0) {
-      addBattleLog(`${defCard.name}は倒れた…`);
-      const nextIdx = battleState.player.findIndex(c => c.hp > 0);
-      if (nextIdx === -1) { finishBattle(false); return; }
-      battleState.playerActive = nextIdx;
-      renderBattle();
+function applyMatch3Gravity() {
+  for (let c = 0; c < MATCH3_COLS; c++) {
+    let write = MATCH3_ROWS - 1;
+    for (let r = MATCH3_ROWS - 1; r >= 0; r--) {
+      if (match3Grid[r][c] !== null) {
+        match3Grid[write][c] = match3Grid[r][c];
+        if (write !== r) match3Grid[r][c] = null;
+        write--;
+      }
     }
-    battleBusy = false;
-  }, 500);
-}
-
-function forfeitBattle() {
-  showConfirm('闘技場から撤退しますか？<br>（この戦いは敗北扱いになります）', () => {
-    document.getElementById('battle-screen').classList.add('hidden');
-    document.getElementById('title-screen').classList.remove('hidden');
-    battleState = null;
-  });
-}
-
-function finishBattle(playerWon) {
-  battleBusy = true;
-  document.getElementById('battle-screen').classList.add('hidden');
-  document.getElementById('battle-result-screen').classList.remove('hidden');
-  const titleEl = document.getElementById('battle-result-title');
-  const msgEl   = document.getElementById('battle-result-msg');
-  const nextBtn = document.getElementById('battle-result-next-btn');
-
-  if (playerWon) {
-    titleEl.textContent = '🏆 勝利！';
-    msgEl.textContent = `${selectedStage.name}を制覇した！`;
-    triggerVibration([30, 40, 30, 40, 60]);
-    if (selectedStage.id === unlockedArenaStage && unlockedArenaStage < ARENA_STAGES.length) {
-      unlockedArenaStage++;
-      localStorage.setItem('monsterMergeArenaStage', unlockedArenaStage);
-      msgEl.textContent += ' 次の闘技場が解放された！';
+    for (let r = write; r >= 0; r--) {
+      match3Grid[r][c] = Math.floor(Math.random() * MATCH3_TYPES);
     }
-    nextBtn.classList.toggle('hidden', selectedStage.id >= ARENA_STAGES.length);
-  } else {
-    titleEl.textContent = '💀 敗北…';
-    msgEl.textContent = 'チームは倒れてしまった。編成を見直して再挑戦しよう。';
-    nextBtn.classList.add('hidden');
   }
+}
+
+function checkMatch3EndState() {
+  if (!hasAnyMatch3Move()) {
+    generateMatch3Board();
+    renderMatch3();
+  }
+  if (match3Moves <= 0) {
+    setTimeout(showMatch3Result, 400);
+  }
+}
+
+function hasAnyMatch3Move() {
+  for (let r = 0; r < MATCH3_ROWS; r++) {
+    for (let c = 0; c < MATCH3_COLS; c++) {
+      if (c < MATCH3_COLS - 1) {
+        swapMatch3Tiles({ row: r, col: c }, { row: r, col: c+1 });
+        const has = findMatch3Matches().length > 0;
+        swapMatch3Tiles({ row: r, col: c }, { row: r, col: c+1 });
+        if (has) return true;
+      }
+      if (r < MATCH3_ROWS - 1) {
+        swapMatch3Tiles({ row: r, col: c }, { row: r+1, col: c });
+        const has = findMatch3Matches().length > 0;
+        swapMatch3Tiles({ row: r, col: c }, { row: r+1, col: c });
+        if (has) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function showMatch3Result() {
+  document.getElementById('match3-screen').classList.add('hidden');
+  document.getElementById('match3-result-screen').classList.remove('hidden');
+  document.getElementById('match3-result-score').textContent = match3Score;
+  document.getElementById('match3-result-best').textContent = match3Best;
 }
 
 // ===== 進化バー =====
@@ -1901,31 +1905,17 @@ function adjustColor(hex, n) {
     });
   });
 
-  // ===== バトルアリーナ =====
-  document.getElementById('arena-btn').addEventListener('click', showArenaScreen);
-  document.getElementById('arena-close-btn').addEventListener('click', closeArenaScreen);
-  document.getElementById('arena-team-back-btn').addEventListener('click', showArenaStageStep);
-  document.getElementById('arena-team-confirm-btn').addEventListener('click', startBattle);
-  document.getElementById('battle-attack-btn').addEventListener('click', playerAttack);
-  document.getElementById('battle-flee-btn').addEventListener('click', forfeitBattle);
-  document.getElementById('battle-result-retry-btn').addEventListener('click', () => {
-    document.getElementById('battle-result-screen').classList.add('hidden');
-    startBattle();
+  // ===== ルーンマッチ（マッチ3パズル） =====
+  document.getElementById('match3-btn').addEventListener('click', openMatch3);
+  document.getElementById('match3-back-btn').addEventListener('click', () => {
+    showConfirm('ルーンマッチを終了して<br>タイトルに戻りますか？', closeMatch3ToTitle);
   });
-  document.getElementById('battle-result-next-btn').addEventListener('click', () => {
-    document.getElementById('battle-result-screen').classList.add('hidden');
-    const next = ARENA_STAGES.find(s => s.id === selectedStage.id + 1);
-    if (next) {
-      selectedStage = next;
-      document.getElementById('arena-screen').classList.remove('hidden');
-      showArenaTeamStep();
-    }
+  document.getElementById('match3-retry-btn').addEventListener('click', () => {
+    document.getElementById('match3-result-screen').classList.add('hidden');
+    document.getElementById('match3-screen').classList.remove('hidden');
+    startMatch3Game();
   });
-  document.getElementById('battle-result-close-btn').addEventListener('click', () => {
-    document.getElementById('battle-result-screen').classList.add('hidden');
-    document.getElementById('title-screen').classList.remove('hidden');
-    battleState = null;
-  });
+  document.getElementById('match3-result-close-btn').addEventListener('click', closeMatch3ToTitle);
 })();
 
 // ===== テーマ切り替え =====

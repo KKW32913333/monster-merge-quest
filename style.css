@@ -788,8 +788,9 @@ button {
 }
 #difficulty-close-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--shadow-solid-nav); }
 
-/* ===== バトルアリーナ：共通ボタン ===== */
-#arena-btn {
+
+/* ===== ルーンマッチ（マッチ3パズル） ===== */
+#match3-btn {
   width: 100%; padding: 10px;
   background: var(--grad-btn-danger);
   border: none; color: #fff;
@@ -798,194 +799,85 @@ button {
   text-shadow: 0 1px 2px rgba(0,0,0,0.3);
   font-weight: bold;
 }
-#arena-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--shadow-solid-danger); }
+#match3-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--shadow-solid-danger); }
 
-/* ===== アリーナ：ステージ/チーム選択画面 ===== */
-#arena-screen {
-  position: fixed; inset: 0;
-  background: var(--bg-overlay);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 220; backdrop-filter: blur(6px);
-  padding: 16px;
-}
-#arena-box {
-  background: var(--bg-box);
-  border: 3px solid var(--panel-border);
-  border-radius: 24px;
-  padding: 22px 20px;
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
-  width: 100%; max-width: 380px; max-height: 88vh; overflow-y: auto;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-  animation: fadeInUp 0.3s ease;
-}
-#arena-title {
-  font-size: 1.2rem; color: var(--accent-red);
-  text-shadow: 0 0 10px var(--glow-danger);
-  letter-spacing: 0.06em; font-weight: bold;
-}
-.arena-subtitle { font-size: 0.72rem; color: var(--text-dim); align-self: flex-start; }
-
-#arena-stage-list, #arena-team-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-
-.arena-stage-item {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
-  width: 100%; padding: 10px 14px;
-  background: rgba(0,0,0,0.25);
-  border: 2px solid var(--panel-border);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-family: var(--font-ui); text-align: left; cursor: pointer;
-}
-.arena-stage-item.locked { opacity: 0.45; cursor: not-allowed; }
-.arena-stage-name { font-size: 0.82rem; font-weight: bold; }
-.arena-stage-enemies { font-size: 0.6rem; color: var(--text-dim); }
-
-#arena-team-list {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-  max-height: 46vh; overflow-y: auto;
-}
-.arena-card-item {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 8px 4px;
-  background: rgba(0,0,0,0.25);
-  border: 2px solid var(--panel-border);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-family: var(--font-ui); cursor: pointer;
-}
-.arena-card-item.selected { border-color: var(--accent-gold-bright); box-shadow: 0 0 0 2px var(--accent-gold-bright) inset; }
-.arena-card-item canvas { border-radius: 50%; }
-.arena-card-name { font-size: 0.6rem; font-weight: bold; text-align: center; }
-.arena-card-stats { font-size: 0.5rem; color: var(--text-dim); text-align: center; }
-
-#arena-team-confirm-btn {
-  width: 100%; padding: 11px;
-  background: var(--grad-btn-primary);
-  border: none; color: #fff; font-size: 0.9rem; font-weight: bold;
-  border-radius: 12px;
-  box-shadow: 0 4px 0 var(--shadow-solid-primary);
-}
-#arena-team-confirm-btn:disabled { opacity: 0.4; }
-#arena-team-confirm-btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow-solid-primary); }
-
-#arena-team-back-btn, #arena-close-btn {
-  width: 100%; padding: 9px;
-  background: var(--grad-btn-nav);
-  border: none; color: #fff; border-radius: 10px;
-  box-shadow: 0 3px 0 var(--shadow-solid-nav);
-  font-size: 0.75rem;
-}
-
-/* ===== バトル本体画面 ===== */
-#battle-screen {
+#match3-screen {
   position: fixed; inset: 0;
   background: var(--bg-title);
   display: flex; align-items: center; justify-content: center;
-  z-index: 210; padding: 16px;
+  z-index: 210; padding: 12px;
 }
-#battle-box {
-  width: 100%; max-width: 400px;
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
-}
-#battle-stage-name {
-  font-size: 0.9rem; color: var(--accent-gold); font-weight: bold;
-  text-shadow: 0 0 8px var(--glow-warm);
-}
-
-#battle-field {
-  width: 100%;
-  background: var(--bg-box);
-  border: 3px solid var(--panel-border);
-  border-radius: 20px;
-  padding: 16px;
+#match3-box {
   display: flex; flex-direction: column; align-items: center; gap: 10px;
+  width: 100%; max-width: 380px;
 }
-.battle-side { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
-.battle-side canvas { border-radius: 50%; }
-#battle-vs {
-  font-size: 0.85rem; color: var(--accent-red); font-weight: bold;
-  text-shadow: 0 0 8px var(--glow-danger);
-}
-.battle-hp-bar {
-  width: 160px; height: 10px; border-radius: 5px;
-  background: rgba(0,0,0,0.4); overflow: hidden;
-  border: 1px solid var(--panel-border);
-}
-.battle-hp-fill {
-  height: 100%; width: 100%;
-  background: linear-gradient(90deg, #43c96b, #2a9448);
-  transition: width 0.35s ease;
-}
-.battle-hp-text { font-size: 0.62rem; color: var(--text-primary); font-weight: bold; }
-.battle-bench { display: flex; gap: 6px; }
-.bench-dot {
-  width: 12px; height: 12px; border-radius: 50%;
-  border: 1.5px solid rgba(255,255,255,0.5);
-  display: inline-block;
-}
-.bench-active { box-shadow: 0 0 0 2px var(--accent-gold-bright); }
-.bench-fainted { opacity: 0.35; }
-
-#battle-log {
-  width: 100%; max-height: 90px; overflow-y: auto;
-  background: rgba(0,0,0,0.3);
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
+#match3-header {
+  display: flex; justify-content: space-around; align-items: center;
+  width: 100%;
+  background: var(--panel-bg);
+  border: 2px solid var(--panel-border);
+  border-radius: 14px;
   padding: 8px 10px;
-  font-size: 0.65rem; color: var(--text-dim); line-height: 1.6;
+}
+.match3-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.match3-stat span:last-child {
+  font-size: 1rem; font-weight: bold; color: var(--accent-gold-bright);
+  text-shadow: 0 0 6px var(--glow-bright);
 }
 
-#battle-actions { display: flex; gap: 10px; width: 100%; }
-#battle-attack-btn {
-  flex: 2; padding: 12px;
-  background: var(--grad-btn-danger);
-  border: none; color: #fff; font-size: 0.9rem; font-weight: bold;
-  border-radius: 12px;
-  box-shadow: 0 4px 0 var(--shadow-solid-danger);
-}
-#battle-attack-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow-solid-danger); }
-#battle-flee-btn {
-  flex: 1; padding: 12px;
-  background: rgba(0,0,0,0.3); border: 2px solid var(--panel-border);
-  color: var(--text-dim); border-radius: 12px; font-size: 0.75rem;
+#match3-canvas {
+  border-radius: 14px;
+  border: 3px solid var(--panel-border);
+  background: rgba(0,0,0,0.35);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 16px var(--glow-warm) inset;
+  touch-action: none;
 }
 
-/* ===== バトル結果画面 ===== */
-#battle-result-screen {
+#match3-back-btn {
+  width: 100%; padding: 10px;
+  background: var(--grad-btn-nav);
+  border: none; color: #fff; border-radius: 12px;
+  box-shadow: 0 3px 0 var(--shadow-solid-nav);
+  font-size: 0.78rem;
+}
+#match3-back-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--shadow-solid-nav); }
+
+/* ===== ルーンマッチ：結果画面 ===== */
+#match3-result-screen {
   position: fixed; inset: 0;
   background: var(--bg-overlay);
   display: flex; align-items: center; justify-content: center;
   z-index: 230; backdrop-filter: blur(6px);
 }
-#battle-result-box {
+#match3-result-box {
   background: var(--bg-box);
   border: 3px solid var(--panel-border);
   border-radius: 24px;
   padding: 28px 32px;
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
   min-width: 260px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.5);
   animation: fadeInUp 0.3s ease;
 }
-#battle-result-title {
-  font-size: 1.6rem; font-weight: bold;
+#match3-result-title {
+  font-size: 1.4rem; font-weight: bold;
   color: var(--accent-gold-bright);
   text-shadow: 0 0 14px var(--glow-bright);
 }
-#battle-result-msg { font-size: 0.78rem; color: var(--text-dim); text-align: center; line-height: 1.5; }
-#battle-result-next-btn {
+#match3-result-score-label { font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.15em; }
+#match3-result-score {
+  font-size: 2.2rem; font-weight: bold;
+  color: var(--accent-gold);
+  text-shadow: 0 0 12px var(--glow-warm);
+}
+#match3-result-best-label { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 4px; }
+#match3-retry-btn {
   width: 100%; padding: 11px;
   background: var(--grad-btn-primary);
   border: none; color: #fff; font-weight: bold; border-radius: 12px;
   box-shadow: 0 4px 0 var(--shadow-solid-primary);
 }
-#battle-result-retry-btn {
-  width: 100%; padding: 10px;
-  background: var(--grad-btn-nav);
-  border: none; color: #fff; border-radius: 12px;
-  box-shadow: 0 3px 0 var(--shadow-solid-nav);
-}
-#battle-result-close-btn {
+#match3-result-close-btn {
   width: 100%; padding: 10px;
   background: rgba(0,0,0,0.3); border: 2px solid var(--panel-border);
   color: var(--text-dim); border-radius: 12px;
