@@ -1336,10 +1336,10 @@ function showDifficultyScreen() {
 }
 
 // ===== ルーンマッチ（マッチ3パズル） =====
-const MATCH3_COLS = 6;
-const MATCH3_ROWS = 8;
-const MATCH3_TYPES = 6; // MONSTERS[0..5]（スライム〜ミノタウロス）を使用
-const MATCH3_START_MOVES = 20;
+const MATCH3_COLS = 7;
+const MATCH3_ROWS = 9;
+const MATCH3_TYPES = 10; // MONSTERS全10体（スライム〜魔王）を使用
+const MATCH3_START_MOVES = 25;
 
 let match3Canvas, match3Ctx;
 let match3Grid = [];
