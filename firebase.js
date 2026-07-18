@@ -6,7 +6,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import {
   getFirestore,
   collection,
-  addDoc,
+  doc,
+  getDoc,
+  setDoc,
   query,
   orderBy,
   limit,
@@ -39,19 +41,42 @@ try {
   console.warn("⚠️ Firebase 未設定 or 接続失敗:", err.message);
 }
 
-// ===== スコア送信 =====
+// ===== プレイヤー識別ID =====
+// ログイン機能がないため、端末（ブラウザ）ごとに匿名IDを1つ自動生成し、
+// localStorageに保存しておく。このIDをFirestoreのドキュメントIDとして使うことで
+// 「同じ端末からの記録は1件に集約し、自己ベストのみ保持する」仕組みにする。
+function getPlayerId() {
+  let id = localStorage.getItem('monsterMergePlayerId');
+  if (!id) {
+    id = 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('monsterMergePlayerId', id);
+  }
+  return id;
+}
+
+// ===== スコア送信（新規登録ではなく、自己ベスト更新時のみ上書き） =====
 window.submitScore = async function(name, score) {
   if (!db) {
     console.warn("Firebase が未設定です。firebaseConfig を設定してください。");
     return;
   }
   try {
-    await addDoc(collection(db, "scores"), {
-      name: name.slice(0, 12),
-      score: Number(score),
-      createdAt: serverTimestamp()
-    });
-    console.log(`✅ スコア登録: ${name} - ${score}`);
+    const playerId = getPlayerId();
+    const ref = doc(db, "scores", playerId);
+    const snap = await getDoc(ref);
+    const prevScore = snap.exists() ? Number(snap.data().score) || 0 : -1;
+    const newScore = Number(score);
+
+    if (newScore > prevScore) {
+      await setDoc(ref, {
+        name: name.slice(0, 12),
+        score: newScore,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      console.log(`✅ 自己ベスト更新: ${name} - ${newScore}`);
+    } else {
+      console.log(`ℹ️ 自己ベスト（${prevScore}）を超えなかったため、ランキングは更新されませんでした`);
+    }
   } catch (err) {
     console.error("❌ スコア登録エラー:", err);
   }
