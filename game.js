@@ -797,23 +797,17 @@ function processMergeQueue() {
 
 // ===== 爆弾スライムの爆発処理 =====
 function handleBombExplosion(mA, mB, mx, my) {
-  const blastRadius = 110;
-  const affected = bodies.filter(m => {
-    if (m === mA || m === mB) return true;
-    if (m.merging) return false;
-    const dx = m.body.position.x - mx, dy = m.body.position.y - my;
-    return Math.sqrt(dx*dx + dy*dy) < blastRadius;
-  });
+  // 範囲攻撃ではなく、触れた1体（＋爆弾自身）だけを消す
+  const affected = [mA, mB];
   affected.forEach(m => removeMonster(m));
 
   const bonus = 30 * DIFFICULTIES[currentDifficulty].scoreMult;
   addScore(Math.round(bonus * affected.length));
 
   spawnMagicExplosion(mx, my, { magic: '#ff5500' }, 5);
-  spawnBlastWave(mx, my, 6);
-  triggerScreenShake(2);
-  triggerVibration([40, 30, 60]);
-  showLevelUp('💥 大爆発！');
+  triggerScreenShake(1);
+  triggerVibration([30, 20]);
+  showLevelUp('💥 爆発！');
 }
 
 // ===== スコア加算共通処理（ミッション連携込み） =====
@@ -896,11 +890,15 @@ function buyShopItem(id) {
   if (id === 'bomb_clear') {
     const sorted = [...bodies].sort((a, b) => a.body.position.y - b.body.position.y);
     const toRemove = sorted.slice(0, Math.min(3, sorted.length));
-    const cx = toRemove.length ? toRemove[0].body.position.x : W/2;
+    // それぞれの位置で個別にエフェクトを出す（1箇所だけだと何が消えたか分からないため）
+    toRemove.forEach(m => {
+      spawnMagicExplosion(m.body.position.x, m.body.position.y, { magic: '#66ccff' }, 3);
+    });
     toRemove.forEach(m => removeMonster(m));
-    spawnMagicExplosion(cx, 100, { magic: '#66ccff' }, 3);
     triggerScreenShake(1);
     triggerVibration([20, 20]);
+    // 盤面で何が起きたか見えるよう、購入直後にショップを閉じる
+    closeShop();
   } else if (id === 'rainbow_charge') {
     nextIdx = 'rainbow';
     drawNextMonster();
