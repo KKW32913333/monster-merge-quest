@@ -276,6 +276,7 @@ html[data-theme="sakura"] {
 
 html, body {
   width: 100%; height: 100%;
+  height: 100dvh;
   background: var(--bg-app);
   color: var(--text-primary);
   font-family: var(--font-ui);
@@ -303,7 +304,7 @@ html, body {
   width: 100%; padding: 10px;
   background: var(--grad-btn-nav);
   border: none; color: #fff;
-  border-radius: 12px;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   box-shadow: 0 3px 0 var(--shadow-solid-nav);
   text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
@@ -364,7 +365,12 @@ html, body {
 /* ===== APP LAYOUT ===== */
 #app {
   display: flex; flex-direction: column; align-items: center;
-  height: 100vh; padding: 8px; gap: 6px; position: relative; z-index: 1;
+  height: 100vh; height: 100dvh;
+  padding: 8px; gap: 6px; position: relative; z-index: 1;
+  padding-top: max(8px, env(safe-area-inset-top));
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  padding-left: max(8px, env(safe-area-inset-left));
+  padding-right: max(8px, env(safe-area-inset-right));
 }
 
 /* ===== HEADER ===== */
@@ -539,20 +545,27 @@ html, body {
 
 #title-box {
   display: flex; flex-direction: column; align-items: center; gap: 16px;
-  padding: 36px 32px;
+  padding: 38px 30px 32px;
   background: var(--bg-box);
-  border: 3px solid var(--panel-border);
-  border-radius: 24px;
+  border: 2px solid var(--panel-border);
+  clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
   min-width: 280px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 24px var(--glow-warm) inset;
   animation: fadeInUp 0.4s ease;
+  position: relative;
 }
+#title-box::before, #title-box::after {
+  content: ''; position: absolute; width: 14px; height: 14px;
+  border: 1.5px solid var(--accent-gold-bright); opacity: 0.7;
+}
+#title-box::before { top: 8px; left: 8px; border-right: none; border-bottom: none; }
+#title-box::after { bottom: 8px; right: 8px; border-left: none; border-top: none; }
 
 #title-logo {
-  width: 110px; height: 110px;
-  border-radius: 24px;
+  width: 108px; height: 108px;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
   overflow: hidden;
-  box-shadow: 0 4px 20px var(--glow-warm);
+  box-shadow: 0 4px 24px var(--glow-warm);
   animation: titleFloat 3s ease-in-out infinite;
 }
 #title-logo img { width: 100%; height: 100%; object-fit: cover; }
@@ -563,10 +576,10 @@ html, body {
 }
 
 #title-name {
-  font-size: 1.5rem; font-weight: bold; text-align: center; line-height: 1.2;
+  font-size: 1.45rem; font-weight: bold; text-align: center; line-height: 1.3;
   color: var(--accent-gold-bright);
   text-shadow: 0 0 12px var(--glow-warm), 0 2px 4px rgba(0,0,0,0.4);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.03em;
 }
 
 #title-sub {
@@ -579,8 +592,8 @@ html, body {
   background: var(--grad-btn-primary);
   border: none;
   color: #fff;
-  font-size: 1rem; font-weight: bold; letter-spacing: 0.1em;
-  border-radius: 14px;
+  font-size: 1rem; font-weight: bold; letter-spacing: 0.06em;
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
   box-shadow: 0 4px 0 var(--shadow-solid-primary), 0 6px 16px var(--glow-warm);
   animation: startPulse 2s ease-in-out infinite;
   text-shadow: 0 1px 2px rgba(0,0,0,0.4);
@@ -596,7 +609,8 @@ html, body {
 #title-ranking-btn {
   width: 100%; padding: 10px;
   background: var(--grad-btn-secondary);
-  border: none; color: #fff; border-radius: 12px;
+  border: none; color: #fff;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   box-shadow: 0 3px 0 var(--shadow-solid-secondary), 0 4px 10px rgba(0,0,0,0.3);
   font-weight: bold;
 }
@@ -812,7 +826,7 @@ button {
   width: 100%;
   background: rgba(0,0,0,0.25);
   border: 2px solid var(--panel-border);
-  border-radius: 14px;
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
   padding: 10px 14px;
   display: flex; flex-direction: column; gap: 6px;
 }
@@ -852,7 +866,7 @@ button {
   width: 100%; padding: 10px;
   background: var(--grad-btn-nav);
   border: none; color: #fff;
-  border-radius: 12px;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   box-shadow: 0 3px 0 var(--shadow-solid-nav);
   text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
