@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>⚔️ Monster Merge Quest</title>
 
   <!-- 保存済みテーマを即時反映（画面のちらつき防止） -->
@@ -10,22 +10,6 @@
     (function () {
       var saved = localStorage.getItem('monsterMergeTheme') || 'dungeon';
       document.documentElement.setAttribute('data-theme', saved);
-    })();
-  </script>
-
-  <!-- 実際に見えている高さを測定してCSS変数化（iOSのPWA/Safariで100vh・100dvhがずれる対策） -->
-  <script>
-    (function () {
-      function setVH() {
-        var h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-        document.documentElement.style.setProperty('--vh', (h * 0.01) + 'px');
-      }
-      setVH();
-      window.addEventListener('resize', setVH);
-      window.addEventListener('orientationchange', setVH);
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', setVH);
-      }
     })();
   </script>
 

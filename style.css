@@ -363,13 +363,8 @@ html, body {
 
 /* ===== APP LAYOUT ===== */
 #app {
-  position: fixed; inset: 0;
   display: flex; flex-direction: column; align-items: center;
-  padding: 8px; gap: 6px; z-index: 1;
-  padding-top: max(8px, env(safe-area-inset-top));
-  padding-bottom: max(8px, env(safe-area-inset-bottom));
-  padding-left: max(8px, env(safe-area-inset-left));
-  padding-right: max(8px, env(safe-area-inset-right));
+  height: 100vh; padding: 8px; gap: 6px; position: relative; z-index: 1;
 }
 
 /* ===== HEADER ===== */
