@@ -59,34 +59,36 @@
 
   <div id="app">
     <header id="game-header">
-      <div id="score-panel">
-        <div class="score-block">
-          <span class="score-label">💰 GOLD</span>
-          <span id="score-display">0</span>
-        </div>
-        <div class="score-block">
-          <span class="score-label">👑 BEST</span>
-          <span id="best-display">0</span>
-        </div>
-        <div class="score-block chain-block">
-          <span class="score-label">⚔️ COMBO</span>
-          <span id="chain-display">x1</span>
-        </div>
+      <div id="header-top-row">
+        <button id="home-btn" title="タイトルに戻る">🏠</button>
+        <h1 id="game-title">⚔️ MONSTER MERGE</h1>
+        <button id="restart-btn" title="最初からやり直す">↺</button>
       </div>
-      <div id="header-center">
-        <h1 id="game-title">⚔️ MONSTER<br>MERGE</h1>
-        <div id="header-btn-row">
-          <button id="home-btn" title="タイトルに戻る">🏠 タイトル</button>
-          <button id="restart-btn" title="最初からやり直す">↺ やり直す</button>
+      <div id="header-bottom-row">
+        <div id="score-panel">
+          <div class="score-block">
+            <span class="score-label">💰 GOLD</span>
+            <span id="score-display">0</span>
+          </div>
+          <div class="score-block">
+            <span class="score-label">👑 BEST</span>
+            <span id="best-display">0</span>
+          </div>
+          <div class="score-block chain-block">
+            <span class="score-label">⚔️ COMBO</span>
+            <span id="chain-display">x1</span>
+          </div>
         </div>
-      </div>
-      <div id="next-panel">
-        <span class="score-label">NEXT</span>
-        <canvas id="next-canvas" width="60" height="60"></canvas>
-      </div>
-      <div id="hold-panel" title="ホールド（現在のモンスターをキープ）">
-        <span class="score-label">HOLD</span>
-        <canvas id="hold-canvas" width="60" height="60"></canvas>
+        <div id="preview-panel-group">
+          <div id="next-panel">
+            <span class="score-label">NEXT</span>
+            <canvas id="next-canvas" width="60" height="60"></canvas>
+          </div>
+          <div id="hold-panel" title="ホールド（現在のモンスターをキープ）">
+            <span class="score-label">HOLD</span>
+            <canvas id="hold-canvas" width="60" height="60"></canvas>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -119,7 +121,6 @@
         </div>
 
         <button id="start-btn">⚔️ 冒険を始める！</button>
-        <button id="match3-btn">💎 ルーンマッチ</button>
         <button id="title-ranking-btn">🏆 殿堂ランキング</button>
         <button id="difficulty-btn">🎚️ 難易度: <span id="difficulty-label">中級</span></button>
         <button id="theme-btn">🎨 テーマを選ぶ</button>
@@ -172,6 +173,14 @@
             <span class="theme-swatch sw-cosmic"></span>
             <span class="theme-option-name">星霜の魔法陣</span>
           </button>
+          <button class="theme-option" data-theme-id="meadow">
+            <span class="theme-swatch sw-meadow"></span>
+            <span class="theme-option-name">黄金の草原</span>
+          </button>
+          <button class="theme-option" data-theme-id="sakura">
+            <span class="theme-swatch sw-sakura"></span>
+            <span class="theme-option-name">桜霞の郷</span>
+          </button>
         </div>
         <button id="theme-close-btn">閉じる</button>
       </div>
@@ -196,31 +205,6 @@
           </button>
         </div>
         <button id="difficulty-close-btn">閉じる</button>
-      </div>
-    </div>
-
-    <!-- ルーンマッチ：マッチ3パズル -->
-    <div id="match3-screen" class="hidden">
-      <div id="match3-box">
-        <div id="match3-header">
-          <div class="match3-stat"><span class="score-label">SCORE</span><span id="match3-score">0</span></div>
-          <div class="match3-stat"><span class="score-label">MOVES</span><span id="match3-moves">25</span></div>
-          <div class="match3-stat"><span class="score-label">BEST</span><span id="match3-best">0</span></div>
-        </div>
-        <canvas id="match3-canvas"></canvas>
-        <button id="match3-back-btn">🏰 タイトルに戻る</button>
-      </div>
-    </div>
-
-    <!-- ルーンマッチ：結果画面 -->
-    <div id="match3-result-screen" class="hidden">
-      <div id="match3-result-box">
-        <div id="match3-result-title">🎉 ゲーム終了！</div>
-        <div id="match3-result-score-label">SCORE</div>
-        <div id="match3-result-score">0</div>
-        <div id="match3-result-best-label">BEST: <span id="match3-result-best">0</span></div>
-        <button id="match3-retry-btn">🔄 もう一度</button>
-        <button id="match3-result-close-btn">🏰 タイトルに戻る</button>
       </div>
     </div>
   </div>
