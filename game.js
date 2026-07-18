@@ -576,7 +576,7 @@ let isDropping   = false;
 let isGameOver   = false;
 let mergeQueue   = [];
 let dangerFrames = 0;
-let mergeGraceUntil = 0; // この時刻までは合体直後の判定猶予として危険判定を停止
+let mergeGraceEntries = []; // [{ id: body.id, until: timestamp }] 誕生直後の特定モンスターだけ危険判定を猶予する
 
 // ===== 難易度設定 =====
 const DIFFICULTIES = {
@@ -784,14 +784,15 @@ function processMergeQueue() {
 
   removeMonster(mA);
   removeMonster(mB);
-  setTimeout(() => addMonster(newIdx, mx, my, true), 80);
+  // 大きなモンスターほど落ち着くまで時間がかかるため、誕生したそのモンスターだけ
+  // 危険判定に猶予を与える（他のボールの判定は止めない）
+  const grace = 1000 + newIdx * 150;
+  setTimeout(() => {
+    const newBody = addMonster(newIdx, mx, my, true);
+    addDangerGrace(newBody, grace);
+  }, 80);
   showLevelUp(MONSTERS[newIdx].name);
   trackMissionProgress(newIdx);
-
-  // 大きなモンスターほど落ち着くまで時間がかかるため、危険判定に猶予を与える
-  // （特に魔王など最大サイズは誕生直後に危険ラインへ触れやすいための対策）
-  const grace = 1000 + newIdx * 150;
-  mergeGraceUntil = Math.max(mergeGraceUntil, Date.now() + grace);
 }
 
 // ===== 爆弾スライムの爆発処理 =====
@@ -813,8 +814,6 @@ function handleBombExplosion(mA, mB, mx, my) {
   triggerScreenShake(2);
   triggerVibration([40, 30, 60]);
   showLevelUp('💥 大爆発！');
-
-  mergeGraceUntil = Math.max(mergeGraceUntil, Date.now() + 900);
 }
 
 // ===== スコア加算共通処理（ミッション連携込み） =====
@@ -845,6 +844,74 @@ function addMonster(idx, x, y, fromMerge = false) {
   return body;
 }
 
+// 誕生直後のモンスター（大型ほど落ち着くまで時間がかかる）だけ、
+// 一時的に危険判定の対象から除外する。盤面全体には影響しない。
+function addDangerGrace(body, ms) {
+  mergeGraceEntries.push({ id: body.id, until: Date.now() + ms });
+}
+
+// ===== ショップ（ゲーム中に貯めたゴールドをその場で使う） =====
+const SHOP_ITEMS = [
+  { id: 'bomb_clear',     name: '💣 危険回避',   cost: 200, desc: '盤面上部の高いモンスターを3体まとめて消す' },
+  { id: 'rainbow_charge', name: '🌈 虹チャージ', cost: 100, desc: '次に落とすモンスターを虹スライムに変える' },
+  { id: 'grace_time',     name: '⏱️ 猶予タイム', cost: 60,  desc: '5秒間、危険ラインの判定を止める' },
+];
+
+function openShop() {
+  if (isGameOver) return;
+  renderShop();
+  document.getElementById('shop-screen').classList.remove('hidden');
+}
+
+function closeShop() {
+  document.getElementById('shop-screen').classList.add('hidden');
+}
+
+function renderShop() {
+  document.getElementById('shop-gold').textContent = score;
+  const list = document.getElementById('shop-list');
+  list.innerHTML = '';
+  SHOP_ITEMS.forEach(item => {
+    const btn = document.createElement('button');
+    const affordable = score >= item.cost;
+    btn.className = 'shop-item' + (affordable ? '' : ' disabled');
+    btn.disabled = !affordable;
+    btn.innerHTML = `
+      <span class="shop-item-name">${item.name}</span>
+      <span class="shop-item-desc">${item.desc}</span>
+      <span class="shop-item-cost">💰 ${item.cost}</span>
+    `;
+    btn.addEventListener('click', () => buyShopItem(item.id));
+    list.appendChild(btn);
+  });
+}
+
+function buyShopItem(id) {
+  const item = SHOP_ITEMS.find(i => i.id === id);
+  if (!item || score < item.cost || isGameOver) return;
+
+  score -= item.cost;
+  document.getElementById('score-display').textContent = score;
+
+  if (id === 'bomb_clear') {
+    const sorted = [...bodies].sort((a, b) => a.body.position.y - b.body.position.y);
+    const toRemove = sorted.slice(0, Math.min(3, sorted.length));
+    const cx = toRemove.length ? toRemove[0].body.position.x : W/2;
+    toRemove.forEach(m => removeMonster(m));
+    spawnMagicExplosion(cx, 100, { magic: '#66ccff' }, 3);
+    triggerScreenShake(1);
+    triggerVibration([20, 20]);
+  } else if (id === 'rainbow_charge') {
+    nextIdx = 'rainbow';
+    drawNextMonster();
+  } else if (id === 'grace_time') {
+    bodies.forEach(m => addDangerGrace(m.body, 5000));
+  }
+
+  showLevelUp(`🛒 ${item.name} 購入！`);
+  renderShop();
+}
+
 // ===== ドロップ =====
 function dropMonster() {
   if (isDropping || isGameOver) return;
@@ -869,14 +936,16 @@ function randomDropIdx() {
 
 // ===== 危険ゾーン =====
 function checkDanger() {
-  // 合体直後の猶予期間中は危険判定をスキップ（大型モンスター誕生直後の誤判定防止）
-  if (Date.now() < mergeGraceUntil) {
-    dangerFrames = 0;
-    document.getElementById('danger-line').style.opacity = 0.8;
-    return;
+  // 期限切れの猶予エントリを掃除
+  const now = Date.now();
+  if (mergeGraceEntries.length) {
+    mergeGraceEntries = mergeGraceEntries.filter(e => e.until > now);
   }
+  const gracedIds = mergeGraceEntries.length ? new Set(mergeGraceEntries.map(e => e.id)) : null;
+
   let danger = false;
   for (const m of bodies) {
+    if (gracedIds && gracedIds.has(m.body.id)) continue; // 誕生直後のそのボールだけ猶予
     if (m.body.position.y - monsterDef(m.idx).radius < 62) { danger = true; break; }
   }
   if (danger) {
@@ -1298,6 +1367,10 @@ function trackMissionCombo(mult) {
 function checkMissionComplete() {
   if (!missionState.completed && missionState.progress >= missionState.target) {
     missionState.completed = true;
+    // ミッション達成でゴールドボーナスを付与（プレイ中のみ。ショップで使える）
+    if (typeof isGameOver !== 'undefined' && !isGameOver && typeof score === 'number') {
+      addScore(500);
+    }
     showMissionComplete();
   }
   saveMissionState();
@@ -1307,7 +1380,7 @@ function checkMissionComplete() {
 function showMissionComplete() {
   const ex = document.getElementById('mission-complete-popup'); if (ex) ex.remove();
   const el = document.createElement('div'); el.id = 'mission-complete-popup';
-  el.innerHTML = '🎉 <span style="font-size:0.9rem">デイリーミッション達成！</span>';
+  el.innerHTML = '🎉 <span style="font-size:0.9rem">デイリーミッション達成！ +500 GOLD</span>';
   document.getElementById('app').appendChild(el);
   setTimeout(() => el.remove(), 1800);
 }
@@ -1404,12 +1477,13 @@ function setupInput() {
 // ===== タイトル画面 =====
 function showTitle() {
   // ゲーム状態リセット
-  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0; mergeGraceUntil = 0; resetHold();
+  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0; mergeGraceEntries = []; resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
   document.getElementById('chain-display').textContent = 'x1';
   document.getElementById('gameover-screen').classList.add('hidden');
   document.getElementById('ranking-screen').classList.add('hidden');
+  document.getElementById('shop-screen').classList.add('hidden');
   for (const m of bodies) World.remove(world, m.body);
   bodies = [];
   rebuildWalls();
@@ -1470,7 +1544,7 @@ function triggerGameOver() {
 }
 
 function restartGame() {
-  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0; mergeGraceUntil = 0; resetHold();
+  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0; mergeGraceEntries = []; resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
   document.getElementById('chain-display').textContent = 'x1';
@@ -1578,6 +1652,10 @@ function adjustColor(hex, n) {
       showTitle();
     });
   });
+
+  // ===== ショップ =====
+  document.getElementById('shop-btn').addEventListener('click', openShop);
+  document.getElementById('shop-close-btn').addEventListener('click', closeShop);
 
   // ===== テーマ選択 =====
   document.getElementById('theme-btn').addEventListener('click', () => {
