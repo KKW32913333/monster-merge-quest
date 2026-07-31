@@ -724,6 +724,14 @@ function setupCollision() {
         continue;
       }
 
+      // 魔王同士の共鳴：最上位のためこれ以上進化はしないが、
+      // 特別な演出と大量ボーナスが発生する（今までは何も起きなかった）
+      if (mA.idx === MONSTERS.length - 1 && mB.idx === MONSTERS.length - 1) {
+        mA.merging = mB.merging = true;
+        mergeQueue.push([mA, mB, 'demonfusion']);
+        continue;
+      }
+
       // 通常合体：同じ階層同士のみ
       if (mA.idx !== mB.idx) continue;
       if (mA.idx >= MONSTERS.length - 1) continue;
@@ -754,6 +762,11 @@ function processMergeQueue() {
 
   if (mode === 'bomb') {
     handleBombExplosion(mA, mB, mx, my);
+    return;
+  }
+
+  if (mode === 'demonfusion') {
+    handleDemonFusion(mA, mB, mx, my);
     return;
   }
 
@@ -808,6 +821,29 @@ function handleBombExplosion(mA, mB, mx, my) {
   triggerScreenShake(1);
   triggerVibration([30, 20]);
   showLevelUp('💥 爆発！');
+}
+
+// ===== 魔王共鳴：魔王同士がぶつかった時の特別演出 =====
+// これ以上進化はしないため、代わりに莫大なボーナスと大演出を発生させ、
+// 魔王を1体、体勢を立て直した状態で盤面に戻す。
+function handleDemonFusion(mA, mB, mx, my) {
+  const topIdx = MONSTERS.length - 1;
+  removeMonster(mA);
+  removeMonster(mB);
+
+  const bonus = MONSTERS[topIdx].score * 100 * DIFFICULTIES[currentDifficulty].scoreMult;
+  addScore(Math.round(bonus));
+
+  spawnMagicExplosion(mx, my, monsterDef(topIdx), 8);
+  spawnBlastWave(mx, my, topIdx);
+  triggerScreenShake(2);
+  triggerVibration([50, 40, 50, 40, 90]);
+  showLevelUp('👑 魔王共鳴！莫大な力が解放された！');
+
+  setTimeout(() => {
+    const newBody = addMonster(topIdx, mx, my, true);
+    addDangerGrace(newBody, 1000 + topIdx * 150);
+  }, 80);
 }
 
 // ===== スコア加算共通処理（ミッション連携込み） =====

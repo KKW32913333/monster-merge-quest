@@ -2,7 +2,7 @@
 // Monster Merge Quest — オフライン対応
 
 // 更新のたびにこのバージョンを上げると、古いキャッシュが確実に破棄されます
-const CACHE_NAME = 'monster-merge-v2';
+const CACHE_NAME = 'monster-merge-v3';
 
 // キャッシュするファイル一覧（実際にリポジトリ直下にあるファイル名に一致させること）
 const ASSETS = [
@@ -25,6 +25,7 @@ const ASSETS = [
   './monster-centaur.png',
   './monster-minotaur.png',
   './monster-witch.png',
+  './monster-phoenix.png',
   './monster-dragon.png',
   './monster-demonlord.png',
 ];
@@ -68,11 +69,9 @@ self.addEventListener('activate', (event) => {
 });
 
 // ===== フェッチ =====
-// HTML/CSS/JS は「ネットワーク優先」にして更新をすぐ反映し、
-// 取得できない場合のみキャッシュ（オフライン対応）にフォールバックする。
-// 画像などの静的アセットは従来通りキャッシュ優先で高速表示。
-const NETWORK_FIRST_EXT = ['.html', '.css', '.js'];
-
+// 画像を含む全てのファイルを「ネットワーク優先」にする。
+// 資材（画像・コード）を差し替えたら次回起動時に必ず最新版が反映されるよう、
+// キャッシュはオフライン時のフォールバックとしてのみ使う。
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
@@ -81,31 +80,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const isNetworkFirst =
-    NETWORK_FIRST_EXT.some((ext) => url.endsWith(ext)) ||
-    event.request.mode === 'navigate';
-
-  if (isNetworkFirst) {
-    event.respondWith(
-      fetch(event.request)
-        .then((res) => {
-          const resClone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
-          return res;
-        })
-        .catch(() => caches.match(event.request).then((cached) => cached || caches.match('./index.html')))
-    );
-    return;
-  }
-
-  // それ以外（画像等）はキャッシュ優先
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((res) => {
+    fetch(event.request)
+      .then((res) => {
         const resClone = res.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
         return res;
-      });
-    })
+      })
+      .catch(() =>
+        caches.match(event.request).then((cached) => cached || caches.match('./index.html'))
+      )
   );
 });
