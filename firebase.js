@@ -123,3 +123,74 @@ window.loadMyBest = async function() {
     return null;
   }
 };
+
+// =====================================================
+// ===== モンスターキャッチ専用ランキング（別コレクション） =====
+// =====================================================
+
+// ===== モンスターキャッチのスコア送信（自己ベスト更新時のみ上書き） =====
+window.submitCatchScore = async function(name, score) {
+  if (!db) {
+    console.warn("Firebase が未設定です。firebaseConfig を設定してください。");
+    return { updated: false, reason: 'no-db' };
+  }
+  try {
+    const playerId = getPlayerId();
+    const ref = doc(db, "catchScores", playerId);
+    const snap = await getDoc(ref);
+    const prevScore = snap.exists() ? Number(snap.data().score) || 0 : -1;
+    const newScore = Number(score);
+
+    if (newScore > prevScore) {
+      await setDoc(ref, {
+        name: name.slice(0, 12),
+        score: newScore,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      console.log(`✅ モンスターキャッチ 自己ベスト更新: ${name} - ${newScore}`);
+      return { updated: true, best: newScore };
+    } else {
+      return { updated: false, best: prevScore };
+    }
+  } catch (err) {
+    console.error("❌ モンスターキャッチ スコア登録エラー:", err);
+    return { updated: false, reason: 'error' };
+  }
+};
+
+// ===== モンスターキャッチのランキング取得 =====
+window.loadCatchRanking = async function() {
+  if (!db) {
+    console.warn("Firebase が未設定です。");
+    return [];
+  }
+  try {
+    const q = query(
+      collection(db, "catchScores"),
+      orderBy("score", "desc"),
+      limit(20)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => doc.data());
+  } catch (err) {
+    console.error("❌ モンスターキャッチ ランキング取得エラー:", err);
+    return [];
+  }
+};
+
+// ===== モンスターキャッチの自分の記録を取得 =====
+window.loadMyCatchBest = async function() {
+  if (!db) return null;
+  try {
+    const playerId = getPlayerId();
+    const ref = doc(db, "catchScores", playerId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      return { score: Number(snap.data().score) || 0, name: snap.data().name || '' };
+    }
+    return null;
+  } catch (err) {
+    console.error("❌ モンスターキャッチ 自己ベスト取得エラー:", err);
+    return null;
+  }
+};

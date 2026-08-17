@@ -1778,6 +1778,7 @@ function showDifficultyScreen() {
 
 // ===== モンスターキャッチ =====
 const CATCH_LIVES_START = 3;
+const CATCH_TIME_LIMIT = 60000; // 60秒の制限時間
 
 let catchCanvas, catchCtx;
 let catchActive = false;
@@ -1788,6 +1789,7 @@ let catchBest = parseInt(localStorage.getItem('monsterMergeCatchBest') || '0');
 let catchLives = CATCH_LIVES_START;
 let catchCombo = 0;
 let catchElapsed = 0;
+let catchTimeLeft = CATCH_TIME_LIMIT;
 let catchSpawnTimer = 0;
 let catchSpawnInterval = 1000;
 let catchFallSpeed = 1.6;
@@ -1807,6 +1809,7 @@ function openMonsterCatch() {
   initCatchCanvas();
   resetCatchState();
   renderCatchFrame();
+  syncCatchBestFromRanking();
 }
 
 function closeCatchToTitle() {
@@ -1848,6 +1851,7 @@ function resetCatchState() {
   catchLives = CATCH_LIVES_START;
   catchCombo = 0;
   catchElapsed = 0;
+  catchTimeLeft = CATCH_TIME_LIMIT;
   catchSpawnTimer = 0;
   catchSpawnInterval = 1000;
   catchFallSpeed = 1.6;
@@ -1876,6 +1880,12 @@ function stopCatchLoop() {
 function updateCatchHud() {
   document.getElementById('catch-score').textContent = catchScore;
   document.getElementById('catch-best').textContent = catchBest;
+  const timeEl = document.getElementById('catch-time');
+  if (timeEl) {
+    const secs = Math.max(0, Math.ceil(catchTimeLeft / 1000));
+    timeEl.textContent = secs + 's';
+    timeEl.classList.toggle('catch-time-warning', secs <= 10);
+  }
 }
 
 function renderCatchLives() {
@@ -1922,6 +1932,8 @@ function catchGameLoop(ts) {
   const dt = Math.min(50, ts - catchLastTs);
   catchLastTs = ts;
   catchElapsed += dt;
+  catchTimeLeft -= dt;
+  updateCatchHud();
 
   // 難易度上昇：10秒ごとに少しずつ速く・頻繁に（上限あり）
   const stage = Math.floor(catchElapsed / 10000);
@@ -1967,7 +1979,7 @@ function catchGameLoop(ts) {
   updateCatchParticles(dt);
   renderCatchFrame();
 
-  if (catchLives <= 0) {
+  if (catchLives <= 0 || catchTimeLeft <= 0) {
     endCatchGame();
     return;
   }
@@ -2133,6 +2145,44 @@ function endCatchGame() {
   document.getElementById('catch-result-screen').classList.remove('hidden');
   document.getElementById('catch-result-score').textContent = catchScore;
   document.getElementById('catch-result-best').textContent = catchBest;
+  autoSubmitCatchScore();
+}
+
+// ===== モンスターキャッチ：スコア自動登録（MMQ本編と同じ保存名を使い回す） =====
+function autoSubmitCatchScore() {
+  const statusEl = document.getElementById('catch-result-status');
+  const savedName = localStorage.getItem('monsterMergePlayerName');
+  if (!savedName) {
+    if (statusEl) statusEl.textContent = '（名前未設定：本編を1度プレイすると記録されます）';
+    return;
+  }
+  if (!window.submitCatchScore) return;
+  if (statusEl) statusEl.textContent = 'ランキングを確認中...';
+  window.submitCatchScore(savedName, catchScore).then((result) => {
+    if (!statusEl) return;
+    if (result && result.updated) {
+      statusEl.textContent = `🎉 ${savedName} さんの自己ベストを更新！`;
+      SoundManager.rankUpdate();
+    } else {
+      statusEl.textContent = `✅ ${savedName} として記録済み`;
+    }
+  }).catch(() => {
+    if (statusEl) statusEl.textContent = '登録に失敗しました';
+  });
+}
+
+// ===== モンスターキャッチの自己ベストをランキングと同期 =====
+function syncCatchBestFromRanking() {
+  if (!window.loadMyCatchBest) return;
+  window.loadMyCatchBest().then((record) => {
+    if (!record) return;
+    if (record.score !== catchBest) {
+      catchBest = record.score;
+      localStorage.setItem('monsterMergeCatchBest', catchBest);
+      const el = document.getElementById('catch-best');
+      if (el) el.textContent = catchBest;
+    }
+  }).catch(() => {});
 }
 
 // ===== 進化バー =====
@@ -2367,12 +2417,24 @@ function doSubmitScore(name) {
 
 // ===== ボタンバインドはDOMContentLoaded内で行う =====
 
-function showRanking(fromTitle = false) {
+let currentRankingBoard = 'mmq';
+
+function showRanking(fromTitle = false, board = 'mmq') {
   if (fromTitle) document.getElementById('title-screen').classList.add('hidden');
   document.getElementById('ranking-screen').classList.remove('hidden');
+  loadRankingBoard(board);
+}
+
+function loadRankingBoard(board) {
+  currentRankingBoard = board;
+  document.querySelectorAll('.ranking-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.board === board);
+  });
   document.getElementById('ranking-list').innerHTML =
     '<div style="color:#7a6040;text-align:center;padding:20px;">読み込み中...</div>';
-  if (window.loadRanking) { window.loadRanking().then(entries => renderRanking(entries)); }
+
+  const loader = board === 'catch' ? window.loadCatchRanking : window.loadRanking;
+  if (loader) { loader().then(entries => renderRanking(entries)); }
   else { renderRanking([]); }
 }
 
@@ -2432,6 +2494,16 @@ function adjustColor(hex, n) {
   document.getElementById('close-ranking-btn').addEventListener('click', () => {
     document.getElementById('ranking-screen').classList.add('hidden');
     showTitle();
+  });
+
+  document.querySelectorAll('.ranking-tab').forEach(tab => {
+    tab.addEventListener('click', () => loadRankingBoard(tab.dataset.board));
+  });
+
+  document.getElementById('catch-result-ranking-btn').addEventListener('click', () => {
+    document.getElementById('catch-result-screen').classList.add('hidden');
+    document.getElementById('ranking-screen').classList.remove('hidden');
+    loadRankingBoard('catch');
   });
 
   document.getElementById('restart-btn').addEventListener('click', () => {

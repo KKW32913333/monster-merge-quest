@@ -655,6 +655,21 @@ html, body {
   letter-spacing: 0.08em; font-weight: bold;
 }
 
+#ranking-tabs { display: flex; gap: 6px; width: 100%; }
+.ranking-tab {
+  flex: 1; padding: 8px 6px;
+  background: rgba(0,0,0,0.25);
+  border: 2px solid var(--panel-border);
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-family: var(--font-ui); font-size: 0.72rem; font-weight: bold;
+}
+.ranking-tab.active {
+  background: var(--grad-btn-primary);
+  color: #fff; border-color: transparent;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+}
+
 #final-score-label { font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.15em; }
 #final-score {
   font-size: 2.6rem; font-weight: bold;
@@ -1118,11 +1133,19 @@ button {
   border-radius: 50%; border: 1.5px solid var(--accent-gold);
   color: var(--accent-gold); background: rgba(255,154,31,0.1);
 }
-#catch-stats { display: flex; align-items: center; gap: 14px; }
+#catch-stats { display: flex; align-items: center; gap: 10px; }
 .catch-stat { display: flex; flex-direction: column; align-items: center; }
 .catch-stat span:last-child {
-  font-size: 1rem; font-weight: bold; color: var(--accent-gold-bright);
+  font-size: 0.95rem; font-weight: bold; color: var(--accent-gold-bright);
   text-shadow: 0 0 6px var(--glow-bright);
+}
+#catch-time.catch-time-warning {
+  color: var(--accent-red);
+  animation: catchTimeBlink 0.6s ease-in-out infinite;
+}
+@keyframes catchTimeBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 #catch-lives { display: flex; gap: 3px; font-size: 1rem; }
 #catch-lives .life-lost { opacity: 0.25; filter: grayscale(1); }
@@ -1220,4 +1243,12 @@ button {
   #catch-header, #catch-field { max-width: 620px; }
   #catch-ready-title { font-size: 1.5rem; }
   #catch-ready-desc { font-size: 0.9rem; }
+}
+
+#catch-result-status { font-size: 0.68rem; color: var(--text-dim); text-align: center; min-height: 1.2em; }
+#catch-result-ranking-btn {
+  width: 100%; padding: 10px;
+  background: var(--grad-btn-secondary);
+  border: none; color: #fff; font-weight: bold; border-radius: 12px;
+  box-shadow: 0 3px 0 var(--shadow-solid-secondary);
 }
