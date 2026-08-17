@@ -564,7 +564,8 @@ let W, H;
 let bodies       = [];
 let particles    = [];
 let embers       = [];
-let score        = 0;
+let score        = 0; // ランキング・自己ベスト用（減らない）
+let gold         = 0; // ショップで使えるお金（購入すると減る）
 let bestScore    = 0;
 let nextIdx      = 0;
 let nextNextIdx  = 0;
@@ -649,6 +650,7 @@ function init() {
 
   bestScore = parseInt(localStorage.getItem('monsterMergeBest') || '0');
   document.getElementById('best-display').textContent = bestScore;
+  syncBestScoreFromRanking();
 
   currentIdx  = randomDropIdx();
   nextIdx     = randomDropIdx();
@@ -873,7 +875,9 @@ function handleDemonFusion(mA, mB, mx, my) {
 // ===== スコア加算共通処理（ミッション連携込み） =====
 function addScore(amount) {
   score += amount;
+  gold  += amount;
   document.getElementById('score-display').textContent = score;
+  document.getElementById('gold-display').textContent = gold;
   if (score > bestScore) {
     bestScore = score;
     localStorage.setItem('monsterMergeBest', bestScore);
@@ -920,8 +924,8 @@ function getShopRecommendation() {
   const nearDanger = topY < 170; // 危険ラインに近い高さまで積み上がっている
 
   if (nearDanger || Date.now() < mergeGraceEntries.reduce((max,e)=>Math.max(max,e.until),0)) {
-    if (score >= 400) return { id: 'bomb_clear', reason: '盤面が危険ラインに近づいています。今のうちに上段を片付けましょう。' };
-    if (score >= 150) return { id: 'grace_time',  reason: '盤面が危険ラインに近づいています。少し猶予を作って落ち着いて置きましょう。' };
+    if (gold >= 400) return { id: 'bomb_clear', reason: '盤面が危険ラインに近づいています。今のうちに上段を片付けましょう。' };
+    if (gold >= 150) return { id: 'grace_time',  reason: '盤面が危険ラインに近づいています。少し猶予を作って落ち着いて置きましょう。' };
     return null;
   }
 
@@ -929,7 +933,7 @@ function getShopRecommendation() {
   const counts = {};
   bodies.forEach(m => { if (typeof m.idx === 'number') counts[m.idx] = (counts[m.idx] || 0) + 1; });
   const maxCount = Object.values(counts).length ? Math.max(...Object.values(counts)) : 0;
-  if (maxCount >= 6 && score >= 220) {
+  if (maxCount >= 6 && gold >= 220) {
     return { id: 'rainbow_charge', reason: '同じ階層のモンスターが盤面に溜まっています。虹スライムで一気にさばきましょう。' };
   }
 
@@ -947,7 +951,7 @@ function closeShop() {
 }
 
 function renderShop() {
-  document.getElementById('shop-gold').textContent = score;
+  document.getElementById('shop-gold').textContent = gold;
   const list = document.getElementById('shop-list');
   list.innerHTML = '';
 
@@ -963,7 +967,7 @@ function renderShop() {
 
   SHOP_ITEMS.forEach(item => {
     const btn = document.createElement('button');
-    const affordable = score >= item.cost;
+    const affordable = gold >= item.cost;
     const isRecommended = recommendation && recommendation.id === item.id;
     btn.className = 'shop-item' + (affordable ? '' : ' disabled') + (isRecommended ? ' recommended' : '');
     btn.disabled = !affordable;
@@ -980,10 +984,10 @@ function renderShop() {
 
 function buyShopItem(id) {
   const item = SHOP_ITEMS.find(i => i.id === id);
-  if (!item || score < item.cost || isGameOver) return;
+  if (!item || gold < item.cost || isGameOver) return;
 
-  score -= item.cost;
-  document.getElementById('score-display').textContent = score;
+  gold -= item.cost;
+  document.getElementById('gold-display').textContent = gold;
   SoundManager.shopBuy();
 
   if (id === 'bomb_clear') {
@@ -1698,6 +1702,22 @@ function showMissionComplete() {
 }
 
 // ===== 難易度選択 =====
+// ===== 自己ベスト表示を殿堂ランキングの実際の記録と同期 =====
+// 端末のローカル保存値とランキングの記録がズレることがあるため、
+// 起動時にFirestore側の値を正として取得し、表示・ローカル保存を上書きする。
+function syncBestScoreFromRanking() {
+  if (!window.loadMyBest) return;
+  window.loadMyBest().then((record) => {
+    if (!record) return;
+    if (record.score !== bestScore) {
+      bestScore = record.score;
+      localStorage.setItem('monsterMergeBest', bestScore);
+      const el = document.getElementById('best-display');
+      if (el) el.textContent = bestScore;
+    }
+  }).catch(() => {});
+}
+
 function updateSoundToggleLabel() {
   const btn = document.getElementById('sound-toggle-btn');
   if (!btn) return;
@@ -1804,9 +1824,10 @@ function setupInput() {
 // ===== タイトル画面 =====
 function showTitle() {
   // ゲーム状態リセット
-  isGameOver = false; score = 0; dangerFrames = 0; mergeGraceEntries = []; resetHold();
+  isGameOver = false; score = 0; gold = 0; dangerFrames = 0; mergeGraceEntries = []; resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
+  document.getElementById('gold-display').textContent = '0';
   document.getElementById('gameover-screen').classList.add('hidden');
   document.getElementById('ranking-screen').classList.add('hidden');
   document.getElementById('shop-screen').classList.add('hidden');
@@ -1895,9 +1916,10 @@ function triggerGameOver() {
 }
 
 function restartGame() {
-  isGameOver = false; score = 0; dangerFrames = 0; mergeGraceEntries = []; resetHold();
+  isGameOver = false; score = 0; gold = 0; dangerFrames = 0; mergeGraceEntries = []; resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
+  document.getElementById('gold-display').textContent = '0';
   document.getElementById('gameover-screen').classList.add('hidden');
   for (const m of bodies) World.remove(world, m.body);
   bodies = [];

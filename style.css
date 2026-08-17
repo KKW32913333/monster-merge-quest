@@ -426,11 +426,11 @@ html, body {
   gap: 8px;
 }
 
-#score-panel { display: flex; gap: 8px; flex: 1; min-width: 0; }
+#score-panel { display: flex; gap: 5px; flex: 1; min-width: 0; }
 .score-block { display: flex; flex-direction: column; align-items: center; min-width: 0; flex: 1; }
-.score-label { font-size: 0.46rem; color: var(--text-dim); letter-spacing: 0.06em; white-space: nowrap; }
+.score-label { font-size: 0.42rem; color: var(--text-dim); letter-spacing: 0.03em; white-space: nowrap; }
 
-#score-display, #best-display {
+#gold-display, #score-display, #best-display {
   font-size: 0.95rem; font-weight: bold;
   color: var(--accent-gold-bright);
   text-shadow: 0 0 6px var(--glow-bright), 0 1px 2px rgba(0,0,0,0.4);
@@ -1011,7 +1011,7 @@ button {
 
   #game-header { padding: 12px 22px; }
   #game-title { font-size: 1.05rem; }
-  #score-display, #best-display { font-size: 1.4rem; }
+  #gold-display, #score-display, #best-display { font-size: 1.4rem; }
   .score-label { font-size: 0.62rem; }
 
   #next-canvas, #hold-canvas { width: 56px; height: 56px; }
@@ -1038,7 +1038,7 @@ button {
     max-width: 720px;
   }
   #game-title { font-size: 1.15rem; }
-  #score-display, #best-display { font-size: 1.6rem; }
+  #gold-display, #score-display, #best-display { font-size: 1.6rem; }
 }
 
 /* ===== HOLD機能：初回チュートリアル & 使用可能ヒント ===== */

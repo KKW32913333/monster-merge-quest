@@ -104,3 +104,22 @@ window.loadRanking = async function() {
     return [];
   }
 };
+
+// ===== 自分の記録を取得（殿堂ランキングに実際に登録されている自己ベスト） =====
+// 端末に保存されたローカルのベストとズレることがあるため、
+// 表示用の自己ベストは常にこちらを正としてFirestoreから取得する。
+window.loadMyBest = async function() {
+  if (!db) return null;
+  try {
+    const playerId = getPlayerId();
+    const ref = doc(db, "scores", playerId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      return { score: Number(snap.data().score) || 0, name: snap.data().name || '' };
+    }
+    return null;
+  } catch (err) {
+    console.error("❌ 自己ベスト取得エラー:", err);
+    return null;
+  }
+};
