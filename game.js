@@ -641,6 +641,13 @@ function init() {
 
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('resize', () => {
+    const catchScreen = document.getElementById('catch-screen');
+    if (catchScreen && !catchScreen.classList.contains('hidden')) {
+      initCatchCanvas();
+      renderCatchFrame();
+    }
+  });
   buildPhysics();
   setupInput();
   buildEvolutionBar();
@@ -1389,6 +1396,27 @@ const SoundManager = {
   holdUse()   { this._tone(700, 0.09, { type: 'sine', gain: 0.16, freqEnd: 500 }); },
   rankUpdate(){ this._tone(660, 0.14, { type: 'sine', gain: 0.2, freqEnd: 990 }); this._tone(990, 0.18, { type: 'sine', gain: 0.15, delay: 0.08 }); },
 
+  // ---- モンスターキャッチ専用SE ----
+  catchGood(tier=0) {
+    const f = 440 + tier*25;
+    this._tone(f, 0.1, { type: 'sine', gain: 0.22, freqEnd: f*1.6 });
+  },
+  catchCombo(combo) {
+    const f = 500 + Math.min(combo,10)*40;
+    this._tone(f, 0.12, { type: 'triangle', gain: 0.18, freqEnd: f*1.4 });
+  },
+  catchRainbow() {
+    [660,880,1100].forEach((f,i)=>this._tone(f,0.14,{type:'sine',gain:0.2,delay:i*0.05}));
+  },
+  catchBomb() {
+    this._noise(0.3, { gain: 0.35, filterFreq: 1000 });
+    this._tone(120, 0.25, { type: 'sawtooth', gain: 0.22, freqEnd: 50 });
+  },
+  catchMiss() { this._tone(260, 0.08, { type: 'sine', gain: 0.08, freqEnd: 180 }); },
+  catchGameOver() {
+    [400,320,240,160].forEach((f,i)=>this._tone(f,0.3,{type:'triangle',gain:0.2,delay:i*0.13}));
+  },
+
   // ---- 簡易アンビエントBGM（不気味で穏やかなダンジョン風ループ）----
   startBgm() {
     if (!this.ctx || this.bgmNodes) return;
@@ -1748,6 +1776,365 @@ function showDifficultyScreen() {
   document.getElementById('difficulty-screen').classList.remove('hidden');
 }
 
+// ===== モンスターキャッチ =====
+const CATCH_LIVES_START = 3;
+
+let catchCanvas, catchCtx;
+let catchActive = false;
+let catchAnimHandle = null;
+let catchLastTs = 0;
+let catchScore = 0;
+let catchBest = parseInt(localStorage.getItem('monsterMergeCatchBest') || '0');
+let catchLives = CATCH_LIVES_START;
+let catchCombo = 0;
+let catchElapsed = 0;
+let catchSpawnTimer = 0;
+let catchSpawnInterval = 1000;
+let catchFallSpeed = 1.6;
+let catchObjects = [];
+let catchParticles = [];
+let catcherX = 0;
+const catcherW = 92;
+let catcherTargetX = 0;
+let catchWidth = 0, catchHeight = 0;
+let catchMagnetUntil = 0;
+
+function openMonsterCatch() {
+  document.getElementById('title-screen').classList.add('hidden');
+  document.getElementById('catch-screen').classList.remove('hidden');
+  document.getElementById('catch-result-screen').classList.add('hidden');
+  document.getElementById('catch-ready-overlay').classList.remove('hidden');
+  initCatchCanvas();
+  resetCatchState();
+  renderCatchFrame();
+}
+
+function closeCatchToTitle() {
+  stopCatchLoop();
+  document.getElementById('catch-screen').classList.add('hidden');
+  document.getElementById('catch-result-screen').classList.add('hidden');
+  document.getElementById('title-screen').classList.remove('hidden');
+}
+
+function initCatchCanvas() {
+  catchCanvas = document.getElementById('catch-canvas');
+  catchCtx = catchCanvas.getContext('2d');
+  const fieldEl = document.getElementById('catch-field');
+  const cssW = fieldEl.clientWidth;
+  const cssH = fieldEl.clientHeight;
+  catchWidth = cssW; catchHeight = cssH;
+  catchCanvas.width  = cssW * DPR;
+  catchCanvas.height = cssH * DPR;
+  catchCanvas.style.width  = cssW + 'px';
+  catchCanvas.style.height = cssH + 'px';
+  catchCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  if (!catchCanvas.dataset.bound) {
+    catchCanvas.addEventListener('pointerdown', onCatchPointer);
+    catchCanvas.addEventListener('pointermove', onCatchPointer);
+    catchCanvas.dataset.bound = '1';
+  }
+  catcherX = cssW / 2;
+  catcherTargetX = catcherX;
+}
+
+function onCatchPointer(e) {
+  const rect = catchCanvas.getBoundingClientRect();
+  catcherTargetX = e.clientX - rect.left;
+}
+
+function resetCatchState() {
+  catchScore = 0;
+  catchLives = CATCH_LIVES_START;
+  catchCombo = 0;
+  catchElapsed = 0;
+  catchSpawnTimer = 0;
+  catchSpawnInterval = 1000;
+  catchFallSpeed = 1.6;
+  catchObjects = [];
+  catchParticles = [];
+  catchMagnetUntil = 0;
+  updateCatchHud();
+  renderCatchLives();
+}
+
+function startCatchGame() {
+  document.getElementById('catch-ready-overlay').classList.add('hidden');
+  resetCatchState();
+  catchActive = true;
+  catchLastTs = performance.now();
+  if (catchAnimHandle) cancelAnimationFrame(catchAnimHandle);
+  catchAnimHandle = requestAnimationFrame(catchGameLoop);
+}
+
+function stopCatchLoop() {
+  catchActive = false;
+  if (catchAnimHandle) cancelAnimationFrame(catchAnimHandle);
+  catchAnimHandle = null;
+}
+
+function updateCatchHud() {
+  document.getElementById('catch-score').textContent = catchScore;
+  document.getElementById('catch-best').textContent = catchBest;
+}
+
+function renderCatchLives() {
+  const el = document.getElementById('catch-lives');
+  if (!el) return;
+  el.innerHTML = '';
+  for (let i = 0; i < CATCH_LIVES_START; i++) {
+    const span = document.createElement('span');
+    span.textContent = '❤️';
+    if (i >= catchLives) span.classList.add('life-lost');
+    el.appendChild(span);
+  }
+}
+
+// ---- 出現アイテムの重み付き抽選（階層が上がるほど出にくい／爆弾はスリルが出る程度の頻度）----
+function randomCatchIdx() {
+  const roll = Math.random();
+  if (roll < 0.10) return 'bomb';
+  if (roll < 0.15) return 'rainbow';
+  const pool = 10;
+  let total = 0;
+  const weights = [];
+  for (let i = 0; i < pool; i++) { const w = pool - i; weights.push(w); total += w; }
+  let r = Math.random() * total;
+  for (let i = 0; i < pool; i++) { if (r < weights[i]) return i; r -= weights[i]; }
+  return 0;
+}
+
+function spawnCatchObject() {
+  const idx = randomCatchIdx();
+  const mon = monsterDef(idx);
+  const r = Math.max(18, Math.min(34, mon.radius * 0.42));
+  const x = r + Math.random() * (catchWidth - r * 2);
+  catchObjects.push({
+    idx, x, y: -r, r,
+    vy: catchFallSpeed * (0.85 + Math.random() * 0.3),
+    rot: 0,
+    rotSpeed: (Math.random() - 0.5) * 0.04,
+  });
+}
+
+function catchGameLoop(ts) {
+  if (!catchActive) return;
+  const dt = Math.min(50, ts - catchLastTs);
+  catchLastTs = ts;
+  catchElapsed += dt;
+
+  // 難易度上昇：10秒ごとに少しずつ速く・頻繁に（上限あり）
+  const stage = Math.floor(catchElapsed / 10000);
+  catchSpawnInterval = Math.max(360, 1000 - stage * 70);
+  catchFallSpeed = Math.min(6.5, 1.6 + stage * 0.35);
+
+  catchSpawnTimer += dt;
+  if (catchSpawnTimer >= catchSpawnInterval) {
+    catchSpawnTimer = 0;
+    spawnCatchObject();
+  }
+
+  // キャッチャー位置をなめらかに追従
+  catcherX += (catcherTargetX - catcherX) * 0.25;
+  catcherX = Math.max(catcherW / 2, Math.min(catchWidth - catcherW / 2, catcherX));
+
+  const effectiveCatcherW = Date.now() < catchMagnetUntil ? catcherW * 1.6 : catcherW;
+  const catcherTop = catchHeight - 54;
+
+  for (let i = catchObjects.length - 1; i >= 0; i--) {
+    const o = catchObjects[i];
+    const f = dt / 16.6;
+    o.y += o.vy * f;
+    o.rot += o.rotSpeed * f;
+
+    if (o.y + o.r >= catcherTop && o.y - o.r <= catchHeight) {
+      const withinX = Math.abs(o.x - catcherX) <= (effectiveCatcherW / 2 + o.r * 0.5);
+      if (withinX) {
+        onCatchObject(o);
+        catchObjects.splice(i, 1);
+        continue;
+      }
+    }
+    if (o.y - o.r > catchHeight) {
+      if (typeof o.idx === 'number') {
+        catchCombo = 0;
+        SoundManager.catchMiss();
+      }
+      catchObjects.splice(i, 1);
+    }
+  }
+
+  updateCatchParticles(dt);
+  renderCatchFrame();
+
+  if (catchLives <= 0) {
+    endCatchGame();
+    return;
+  }
+  catchAnimHandle = requestAnimationFrame(catchGameLoop);
+}
+
+function onCatchObject(o) {
+  const mon = monsterDef(o.idx);
+  const catchY = catchHeight - 54;
+
+  if (o.idx === 'bomb') {
+    catchLives--;
+    catchCombo = 0;
+    SoundManager.catchBomb();
+    triggerScreenShake(1);
+    triggerVibration([40, 30, 40]);
+    spawnCatchBurst(o.x, catchY, '#ff5500', 16);
+    renderCatchLives();
+  } else if (o.idx === 'rainbow') {
+    catchMagnetUntil = Date.now() + 6000;
+    catchScore += 30;
+    SoundManager.catchRainbow();
+    spawnCatchBurst(o.x, catchY, '#ffffff', 20);
+  } else {
+    const gain = 5 + o.idx * 4;
+    catchCombo++;
+    const comboMult = 1 + Math.min(catchCombo, 10) * 0.08;
+    catchScore += Math.round(gain * comboMult);
+    if (catchCombo >= 3) {
+      SoundManager.catchCombo(catchCombo);
+      showCatchComboBadge(catchCombo);
+    } else {
+      SoundManager.catchGood(o.idx);
+    }
+    spawnCatchBurst(o.x, catchY, mon.magic, 10);
+  }
+
+  updateCatchHud();
+  if (catchScore > catchBest) {
+    catchBest = catchScore;
+    localStorage.setItem('monsterMergeCatchBest', catchBest);
+    document.getElementById('catch-best').textContent = catchBest;
+  }
+}
+
+function showCatchComboBadge(combo) {
+  const el = document.getElementById('catch-combo-badge');
+  if (!el) return;
+  el.textContent = `${combo}連続！`;
+  el.classList.remove('hidden');
+  el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => el.classList.add('hidden'), 900);
+}
+
+// ---- パーティクル ----
+function spawnCatchBurst(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 3;
+    catchParticles.push({
+      x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 1.5,
+      size: 2 + Math.random() * 3, color, life: 1, decay: 0.02 + Math.random() * 0.02,
+    });
+  }
+}
+function updateCatchParticles(dt) {
+  const f = dt / 16.6;
+  for (let i = catchParticles.length - 1; i >= 0; i--) {
+    const p = catchParticles[i];
+    p.x += p.vx * f; p.y += p.vy * f; p.vy += 0.08 * f;
+    p.life -= p.decay * f;
+    if (p.life <= 0) catchParticles.splice(i, 1);
+  }
+}
+
+// ---- 描画 ----
+function renderCatchFrame() {
+  if (!catchCtx) return;
+  catchCtx.clearRect(0, 0, catchWidth, catchHeight);
+  catchObjects.forEach(o => drawCatchObject(o));
+  drawCatcher();
+  catchParticles.forEach(p => {
+    catchCtx.save();
+    catchCtx.globalAlpha = Math.max(0, p.life);
+    catchCtx.beginPath(); catchCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    catchCtx.fillStyle = p.color; catchCtx.shadowColor = p.color; catchCtx.shadowBlur = 6;
+    catchCtx.fill();
+    catchCtx.restore();
+  });
+}
+
+function drawCatchObject(o) {
+  const mon = monsterDef(o.idx);
+  catchCtx.save();
+  catchCtx.translate(o.x, o.y);
+
+  const glow = catchCtx.createRadialGradient(0, 0, o.r * 0.6, 0, 0, o.r * 1.3);
+  glow.addColorStop(0, 'transparent'); glow.addColorStop(1, mon.magic + '44');
+  catchCtx.beginPath(); catchCtx.arc(0, 0, o.r * 1.3, 0, Math.PI * 2);
+  catchCtx.fillStyle = glow; catchCtx.fill();
+
+  catchCtx.save();
+  catchCtx.rotate(o.rot);
+  catchCtx.beginPath(); catchCtx.arc(0, 0, o.r, 0, Math.PI * 2); catchCtx.clip();
+  renderMonsterArt(catchCtx, mon, o.r);
+  catchCtx.restore();
+
+  catchCtx.beginPath(); catchCtx.arc(0, 0, o.r, 0, Math.PI * 2);
+  catchCtx.strokeStyle = mon.magic + 'cc'; catchCtx.lineWidth = 1.5; catchCtx.stroke();
+  catchCtx.restore();
+}
+
+function drawCatcher() {
+  const y = catchHeight - 54;
+  const bonus = Date.now() < catchMagnetUntil;
+  const w = bonus ? catcherW * 1.6 : catcherW;
+  const h = 34;
+  catchCtx.save();
+  catchCtx.translate(catcherX, y);
+
+  if (bonus) {
+    catchCtx.beginPath();
+    catchCtx.ellipse(0, h * 0.1, w / 2 + 8, h * 0.55 + 6, 0, 0, Math.PI * 2);
+    catchCtx.strokeStyle = 'rgba(255,255,255,0.6)'; catchCtx.lineWidth = 3;
+    catchCtx.shadowColor = '#fff'; catchCtx.shadowBlur = 12;
+    catchCtx.stroke();
+    catchCtx.shadowBlur = 0;
+  }
+
+  catchCtx.beginPath();
+  catchCtx.moveTo(-w / 2, 0);
+  catchCtx.lineTo(w / 2, 0);
+  catchCtx.lineTo(w / 2 - 10, h);
+  catchCtx.lineTo(-w / 2 + 10, h);
+  catchCtx.closePath();
+  const grad = catchCtx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#8a5a2a'); grad.addColorStop(1, '#5a3616');
+  catchCtx.fillStyle = grad; catchCtx.fill();
+  catchCtx.strokeStyle = '#3a2410'; catchCtx.lineWidth = 2; catchCtx.stroke();
+
+  catchCtx.strokeStyle = 'rgba(0,0,0,0.25)'; catchCtx.lineWidth = 1;
+  for (let i = -3; i <= 3; i++) {
+    catchCtx.beginPath();
+    catchCtx.moveTo(i * (w / 8), 2);
+    catchCtx.lineTo(i * (w / 9), h - 2);
+    catchCtx.stroke();
+  }
+
+  catchCtx.beginPath();
+  catchCtx.ellipse(0, 0, w / 2, 7, 0, 0, Math.PI * 2);
+  catchCtx.fillStyle = '#d4a012'; catchCtx.fill();
+  catchCtx.strokeStyle = '#8a6a10'; catchCtx.lineWidth = 1.5; catchCtx.stroke();
+
+  catchCtx.restore();
+}
+
+function endCatchGame() {
+  stopCatchLoop();
+  SoundManager.catchGameOver();
+  triggerVibration([50, 40, 50, 40, 90]);
+  document.getElementById('catch-screen').classList.add('hidden');
+  document.getElementById('catch-result-screen').classList.remove('hidden');
+  document.getElementById('catch-result-score').textContent = catchScore;
+  document.getElementById('catch-result-best').textContent = catchBest;
+}
+
 // ===== 進化バー =====
 function buildEvolutionBar() {
   const list = document.getElementById('evo-list');
@@ -2064,6 +2451,22 @@ function adjustColor(hex, n) {
   // ===== ショップ =====
   document.getElementById('shop-btn').addEventListener('click', openShop);
   document.getElementById('shop-close-btn').addEventListener('click', closeShop);
+
+  // ===== モンスターキャッチ =====
+  document.getElementById('catch-game-btn').addEventListener('click', openMonsterCatch);
+  document.getElementById('catch-start-btn').addEventListener('click', startCatchGame);
+  document.getElementById('catch-home-btn').addEventListener('click', () => {
+    if (!catchActive) { closeCatchToTitle(); return; }
+    showConfirm('モンスターキャッチを終了して<br>タイトルに戻りますか？', () => {
+      closeCatchToTitle();
+    });
+  });
+  document.getElementById('catch-retry-btn').addEventListener('click', () => {
+    document.getElementById('catch-result-screen').classList.add('hidden');
+    document.getElementById('catch-screen').classList.remove('hidden');
+    startCatchGame();
+  });
+  document.getElementById('catch-result-close-btn').addEventListener('click', closeCatchToTitle);
 
   // ===== サウンド ON/OFF =====
   updateSoundToggleLabel();

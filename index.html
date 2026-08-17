@@ -127,6 +127,7 @@
         </div>
 
         <button id="start-btn">⚔️ 冒険を始める！</button>
+        <button id="catch-game-btn">🧺 モンスターキャッチ</button>
         <button id="title-ranking-btn">🏆 殿堂ランキング</button>
         <button id="difficulty-btn">🎚️ 難易度: <span id="difficulty-label">中級</span></button>
         <button id="theme-btn">🎨 テーマを選ぶ</button>
@@ -226,6 +227,48 @@
         <div id="shop-hint" class="hidden"></div>
         <div id="shop-list"></div>
         <button id="shop-close-btn">閉じる</button>
+      </div>
+    </div>
+
+    <!-- モンスターキャッチ -->
+    <div id="catch-screen" class="hidden">
+      <div id="catch-header">
+        <button id="catch-home-btn" title="タイトルに戻る">🏠</button>
+        <div id="catch-stats">
+          <div class="catch-stat">
+            <span class="score-label">SCORE</span>
+            <span id="catch-score">0</span>
+          </div>
+          <div class="catch-stat">
+            <span class="score-label">BEST</span>
+            <span id="catch-best">0</span>
+          </div>
+          <div id="catch-lives"></div>
+        </div>
+        <div id="catch-combo-badge" class="hidden">0連続！</div>
+      </div>
+      <div id="catch-field">
+        <canvas id="catch-canvas"></canvas>
+        <div id="catch-ready-overlay">
+          <div id="catch-ready-title">🧺 モンスターキャッチ</div>
+          <div id="catch-ready-desc">
+            落ちてくるモンスターを<br>カゴでキャッチしてスコアを稼ごう！<br>
+            <span class="catch-warn">💣 爆弾スライムだけは避けて！</span>
+          </div>
+          <button id="catch-start-btn">▶ スタート</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- モンスターキャッチ：結果画面 -->
+    <div id="catch-result-screen" class="hidden">
+      <div id="catch-result-box">
+        <div id="catch-result-title">💀 GAME OVER</div>
+        <div id="catch-result-score-label">SCORE</div>
+        <div id="catch-result-score">0</div>
+        <div id="catch-result-best-label">BEST: <span id="catch-result-best">0</span></div>
+        <button id="catch-retry-btn">🔄 もう一度</button>
+        <button id="catch-result-close-btn">🏰 タイトルに戻る</button>
       </div>
     </div>
   </div>
