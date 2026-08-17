@@ -566,9 +566,8 @@ let particles    = [];
 let embers       = [];
 let score        = 0;
 let bestScore    = 0;
-let chainCount   = 0;
-let chainTimer   = null;
 let nextIdx      = 0;
+let nextNextIdx  = 0;
 let currentIdx   = 0;
 let mouseX       = 200;
 let isTouching   = false;   // タッチ/マウス押下中
@@ -590,6 +589,7 @@ let currentDifficulty = localStorage.getItem('monsterMergeDifficulty') || 'norma
 let heldIdx  = null;
 let canHold  = true;
 let holdCanvas, holdCtx;
+let nextNextCanvas, nextNextCtx;
 
 // ===== デイリーミッション =====
 const MISSION_POOL = [
@@ -597,7 +597,7 @@ const MISSION_POOL = [
   { id: 'merge_witch',    desc: 'ウィッチを3体誕生させよう',       target: 3,    trackIdx: 6 },
   { id: 'reach_dragon',   desc: 'ドラゴンを1体誕生させよう',     target: 1,    trackIdx: 8 },
   { id: 'score_3000',     desc: '1プレイで3000ゴールド以上稼ごう', target: 3000, trackType: 'score' },
-  { id: 'combo_4',        desc: 'コンボx4以上を1回出そう',       target: 1,    trackType: 'combo', comboReq: 4 },
+  { id: 'merge_centaur',  desc: 'ケンタウルスを4体誕生させよう',   target: 4,    trackIdx: 4 },
 ];
 let missionState = null;
 
@@ -606,11 +606,13 @@ function init() {
   gameCanvas   = document.getElementById('game-canvas');
   effectCanvas = document.getElementById('effect-canvas');
   nextCanvas   = document.getElementById('next-canvas');
+  nextNextCanvas = document.getElementById('next-next-canvas');
   holdCanvas   = document.getElementById('hold-canvas');
   containerEl  = document.getElementById('game-container');
   gameCtx      = gameCanvas.getContext('2d');
   effectCtx    = effectCanvas.getContext('2d');
   nextCtx      = nextCanvas.getContext('2d');
+  nextNextCtx  = nextNextCanvas.getContext('2d');
   holdCtx      = holdCanvas.getContext('2d');
 
   // NEXT表示キャンバスもDPR倍の解像度にして高精細化（表示サイズは60x60のまま）
@@ -620,6 +622,14 @@ function init() {
   nextCanvas.style.width  = nextCssSize + 'px';
   nextCanvas.style.height = nextCssSize + 'px';
   nextCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // NEXT NEXT（2つ先）表示は少し小さめに
+  const nextNextCssSize = Math.round(nextCssSize * 0.72);
+  nextNextCanvas.width  = nextNextCssSize * DPR;
+  nextNextCanvas.height = nextNextCssSize * DPR;
+  nextNextCanvas.style.width  = nextNextCssSize + 'px';
+  nextNextCanvas.style.height = nextNextCssSize + 'px';
+  nextNextCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
   // HOLD表示キャンバスも同様にDPR対応
   holdCanvas.width  = nextCssSize * DPR;
@@ -640,9 +650,11 @@ function init() {
   bestScore = parseInt(localStorage.getItem('monsterMergeBest') || '0');
   document.getElementById('best-display').textContent = bestScore;
 
-  currentIdx = randomDropIdx();
-  nextIdx    = randomDropIdx();
+  currentIdx  = randomDropIdx();
+  nextIdx     = randomDropIdx();
+  nextNextIdx = randomDropIdx();
   drawNextMonster();
+  drawNextNextMonster();
   drawHoldMonster();
 
   // 物理エンジンは一旦止める（タイトル画面中は動かさない）
@@ -792,20 +804,17 @@ function processMergeQueue() {
   }
   newIdx = Math.min(newIdx, MONSTERS.length - 1);
 
-  chainCount++;
-  clearTimeout(chainTimer);
-  chainTimer = setTimeout(() => { chainCount = 0; }, 1600);
-  const chainMult = Math.min(chainCount, 8);
   const base = MONSTERS[newIdx].score * 10 * DIFFICULTIES[currentDifficulty].scoreMult;
-  addScore(Math.round(base * chainMult));
-  updateChainDisplay(chainMult);
-  trackMissionCombo(chainMult);
+  addScore(Math.round(base));
 
-  spawnMagicExplosion(mx, my, monsterDef(mA.idx), chainMult);
+  spawnMagicExplosion(mx, my, monsterDef(mA.idx), 1);
   if (newIdx >= 4) {
     spawnBlastWave(mx, my, newIdx);
     triggerScreenShake(1);
     triggerVibration([25]);
+    SoundManager.bigMerge();
+  } else {
+    SoundManager.merge(newIdx);
   }
 
   removeMonster(mA);
@@ -833,6 +842,7 @@ function handleBombExplosion(mA, mB, mx, my) {
   spawnMagicExplosion(mx, my, { magic: '#ff5500' }, 5);
   triggerScreenShake(1);
   triggerVibration([30, 20]);
+  SoundManager.bomb();
   showLevelUp('💥 爆発！');
 }
 
@@ -851,6 +861,7 @@ function handleDemonFusion(mA, mB, mx, my) {
   spawnBlastWave(mx, my, topIdx);
   triggerScreenShake(2);
   triggerVibration([50, 40, 50, 40, 90]);
+  SoundManager.demonFusion();
   showLevelUp('👑 魔王共鳴！莫大な力が解放された！');
 
   setTimeout(() => {
@@ -973,6 +984,7 @@ function buyShopItem(id) {
 
   score -= item.cost;
   document.getElementById('score-display').textContent = score;
+  SoundManager.shopBuy();
 
   if (id === 'bomb_clear') {
     const sorted = [...bodies].sort((a, b) => a.body.position.y - b.body.position.y);
@@ -1004,12 +1016,15 @@ function dropMonster() {
   const r = monsterDef(currentIdx).radius;
   const cx = Math.max(r + 5, Math.min(W - r - 5, mouseX));
   const newBody = addMonster(currentIdx, cx, 55, false);
+  SoundManager.drop();
   // 出現直後は必ず危険ラインの範囲内から始まるため、落下して抜けるまで少し猶予を与える
   // （連続でどんどん落とすと常にどれかが出現直後の状態になり、誤ってゲームオーバーになるのを防ぐ）
   addDangerGrace(newBody, 700 + r * 8);
   currentIdx = nextIdx;
-  nextIdx    = randomDropIdx();
+  nextIdx     = nextNextIdx;
+  nextNextIdx = randomDropIdx();
   drawNextMonster();
+  drawNextNextMonster();
   canHold = true;
   updateHoldButtonState();
   setTimeout(() => { isDropping = false; }, 500);
@@ -1211,21 +1226,20 @@ function drawMagicCircle(ctx, x, y, r, color, alpha) {
 // ===== 魔法爆発 =====
 const RUNES = ['✦','★','✸','⚡','☽','✺','⚔','🔮','💎','⭐'];
 
-function spawnMagicExplosion(x, y, monster, chainMult) {
-  const cnt = 10 + chainMult * 3;
+function spawnMagicExplosion(x, y, monster, intensity) {
+  const cnt = 10 + intensity * 3;
   const col = monster.magic;
   for (let i = 0; i < cnt; i++) {
     const angle = (i/cnt)*Math.PI*2;
     const speed = 1.5 + Math.random()*3;
     particles.push({ type:'spark', x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed-1.5, size:2.5+Math.random()*3, color:col, life:1, decay:0.018+Math.random()*0.015 });
   }
-  for (let i = 0; i < 5 + chainMult; i++) {
+  for (let i = 0; i < 5 + intensity; i++) {
     const angle = Math.random()*Math.PI*2, speed = 1+Math.random()*2;
     particles.push({ type:'rune', x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed-2, size:6+Math.random()*4, color:col, char:RUNES[Math.floor(Math.random()*RUNES.length)], rot:Math.random()*Math.PI*2, rotSpeed:(Math.random()-0.5)*0.15, life:1, decay:0.02+Math.random()*0.015 });
   }
-  particles.push({ type:'magic-circle', x, y, vx:0, vy:0, size:30+chainMult*8, color:col, life:1, decay:0.035 });
-  particles.push({ type:'ring', x, y, vx:0, vy:0, size:20+chainMult*6, color:col, life:0.8, decay:0.04 });
-  if (chainMult >= 2) showChainPopup(chainMult);
+  particles.push({ type:'magic-circle', x, y, vx:0, vy:0, size:30+intensity*8, color:col, life:1, decay:0.035 });
+  particles.push({ type:'ring', x, y, vx:0, vy:0, size:20+intensity*6, color:col, life:0.8, decay:0.04 });
 }
 
 function spawnBlastWave(x, y, newIdx) {
@@ -1261,6 +1275,154 @@ function triggerVibration(pattern) {
   }
 }
 
+// ===== サウンド（効果音・BGM）=====
+// 外部音声ファイルを使わず、Web Audio APIで全て生成する
+const SoundManager = {
+  ctx: null,
+  master: null,
+  sfxGain: null,
+  bgmGain: null,
+  bgmNodes: null,
+  muted: localStorage.getItem('monsterMergeMuted') === '1',
+  started: false,
+
+  init() {
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    this.ctx = new AC();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = this.muted ? 0 : 1;
+    this.master.connect(this.ctx.destination);
+    this.sfxGain = this.ctx.createGain();
+    this.sfxGain.gain.value = 0.5;
+    this.sfxGain.connect(this.master);
+    this.bgmGain = this.ctx.createGain();
+    this.bgmGain.gain.value = 0.12;
+    this.bgmGain.connect(this.master);
+  },
+
+  // 最初のユーザー操作で呼び出し、AudioContextの自動再生制限を解除する
+  unlock() {
+    this.init();
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    if (!this.started) {
+      this.started = true;
+      this.startBgm();
+    }
+  },
+
+  toggleMute() {
+    this.muted = !this.muted;
+    localStorage.setItem('monsterMergeMuted', this.muted ? '1' : '0');
+    if (this.master) this.master.gain.setTargetAtTime(this.muted ? 0 : 1, this.ctx.currentTime, 0.05);
+    return this.muted;
+  },
+
+  // ---- 効果音の基本パーツ ----
+  _tone(freq, duration, { type = 'sine', gain = 0.3, freqEnd = null, delay = 0 } = {}) {
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime + delay;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    if (freqEnd) osc.frequency.exponentialRampToValueAtTime(Math.max(freqEnd, 1), t0 + duration);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+    osc.connect(g); g.connect(this.sfxGain);
+    osc.start(t0); osc.stop(t0 + duration + 0.02);
+  },
+
+  _noise(duration, { gain = 0.25, delay = 0, filterFreq = 2000 } = {}) {
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime + delay;
+    const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random()*2-1) * (1 - i/bufferSize);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass'; filter.frequency.value = filterFreq;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(gain, t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+    src.connect(filter); filter.connect(g); g.connect(this.sfxGain);
+    src.start(t0);
+  },
+
+  // ---- 個別のSE ----
+  drop()      { this._tone(320, 0.08, { type: 'triangle', gain: 0.15, freqEnd: 220 }); },
+  merge(tier=0) {
+    const base = 260 + tier * 30;
+    this._tone(base, 0.18, { type: 'sine', gain: 0.28, freqEnd: base*1.8 });
+    this._tone(base*1.5, 0.22, { type: 'triangle', gain: 0.14, freqEnd: base*2.2, delay: 0.03 });
+  },
+  bigMerge()  {
+    this.merge(6);
+    this._tone(150, 0.4, { type: 'sawtooth', gain: 0.18, freqEnd: 400, delay: 0.05 });
+  },
+  bomb() {
+    this._noise(0.35, { gain: 0.4, filterFreq: 1200 });
+    this._tone(90, 0.3, { type: 'sawtooth', gain: 0.25, freqEnd: 40 });
+  },
+  demonFusion() {
+    [0,0.08,0.16].forEach((d,i) => this._tone(180+i*60, 0.5, { type: 'sawtooth', gain: 0.22, freqEnd: 500, delay: d }));
+    this._noise(0.6, { gain: 0.2, delay: 0.1, filterFreq: 3000 });
+  },
+  danger()    { this._tone(880, 0.12, { type: 'square', gain: 0.12 }); },
+  gameOver()  {
+    [520,440,360,280].forEach((f,i) => this._tone(f, 0.35, { type: 'triangle', gain: 0.22, delay: i*0.14 }));
+  },
+  buttonClick(){ this._tone(600, 0.05, { type: 'square', gain: 0.08 }); },
+  shopBuy()   { this._tone(500, 0.1, { type: 'sine', gain: 0.2, freqEnd: 900 }); this._tone(900, 0.15, { type: 'sine', gain: 0.15, freqEnd: 1300, delay: 0.06 }); },
+  missionComplete() {
+    [523,659,784,1047].forEach((f,i) => this._tone(f, 0.28, { type: 'triangle', gain: 0.22, delay: i*0.09 }));
+  },
+  holdUse()   { this._tone(700, 0.09, { type: 'sine', gain: 0.16, freqEnd: 500 }); },
+  rankUpdate(){ this._tone(660, 0.14, { type: 'sine', gain: 0.2, freqEnd: 990 }); this._tone(990, 0.18, { type: 'sine', gain: 0.15, delay: 0.08 }); },
+
+  // ---- 簡易アンビエントBGM（不気味で穏やかなダンジョン風ループ）----
+  startBgm() {
+    if (!this.ctx || this.bgmNodes) return;
+    const notes = [130.81, 155.56, 196.00, 174.61]; // C3,Eb3,G3,F3 (マイナー調の浮遊感)
+    const oscs = [];
+    notes.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const g = this.ctx.createGain();
+      g.gain.value = 0;
+      osc.connect(g); g.connect(this.bgmGain);
+      osc.start();
+      oscs.push({ osc, g });
+
+      // ゆっくりしたパッド的な出入り（LFO代わりの手動スケジューリング）
+      const period = 9 + i * 1.7;
+      const scheduleFade = (t) => {
+        if (!this.bgmNodes) return;
+        g.gain.cancelScheduledValues(t);
+        g.gain.setValueAtTime(g.gain.value, t);
+        g.gain.linearRampToValueAtTime(0.22, t + period/2);
+        g.gain.linearRampToValueAtTime(0, t + period);
+        setTimeout(() => scheduleFade(this.ctx.currentTime), period*1000);
+      };
+      scheduleFade(this.ctx.currentTime + i*1.2);
+    });
+    this.bgmNodes = oscs;
+  },
+
+  stopBgm() {
+    if (!this.bgmNodes) return;
+    this.bgmNodes.forEach(({ osc }) => { try { osc.stop(); } catch(e){} });
+    this.bgmNodes = null;
+    this.started = false;
+  },
+};
+
 function spawnEmbers() {
   // 明るいファンタジーの輝き（金・白・水色）
   const colors = ['#ffd700','#fff176','#aef2ff','#ffb3c6','#b3e5fc'];
@@ -1277,18 +1439,6 @@ function spawnEmbers() {
 }
 
 // ===== UI =====
-function updateChainDisplay(mult) {
-  const el = document.getElementById('chain-display');
-  el.textContent = `x${mult}`;
-  el.classList.remove('chain-pop'); void el.offsetWidth; el.classList.add('chain-pop');
-}
-function showChainPopup(mult) {
-  const ex = document.getElementById('chain-popup'); if (ex) ex.remove();
-  const el = document.createElement('div'); el.id = 'chain-popup';
-  el.textContent = `✨ COMBO x${mult}!`;
-  document.getElementById('app').appendChild(el);
-  setTimeout(() => el.remove(), 750);
-}
 function showLevelUp(name) {
   const ex = document.getElementById('levelup-popup'); if (ex) ex.remove();
   const el = document.createElement('div'); el.id = 'levelup-popup';
@@ -1321,6 +1471,25 @@ function drawNextMonster() {
   // 縁取り
   nextCtx.beginPath(); nextCtx.arc(cx, cy, r, 0, Math.PI*2);
   nextCtx.strokeStyle = mon.magic + 'aa'; nextCtx.lineWidth = 1.5; nextCtx.stroke();
+}
+
+function drawNextNextMonster() {
+  if (!nextNextCanvas) return;
+  const size = nextNextCanvas.width / DPR;
+  const cx = size / 2, cy = size / 2;
+  const mon = monsterDef(nextNextIdx);
+  const r   = Math.min(mon.radius, size * 0.36);
+  nextNextCtx.clearRect(0, 0, size, size);
+
+  nextNextCtx.save();
+  nextNextCtx.globalAlpha = 0.65; // 1つ先より控えめな見た目にして優先度を分かりやすく
+  nextNextCtx.translate(cx, cy);
+  nextNextCtx.beginPath(); nextNextCtx.arc(0, 0, r, 0, Math.PI*2); nextNextCtx.clip();
+  renderMonsterArt(nextNextCtx, mon, r);
+  nextNextCtx.restore();
+
+  nextNextCtx.beginPath(); nextNextCtx.arc(cx, cy, r, 0, Math.PI*2);
+  nextNextCtx.strokeStyle = mon.magic + '77'; nextNextCtx.lineWidth = 1.2; nextNextCtx.stroke();
 }
 
 // ===== ホールド機能 =====
@@ -1360,11 +1529,14 @@ function drawHoldMonster() {
 function doHold() {
   if (!canHold || isGameOver || isDropping) return;
   localStorage.setItem('monsterMergeHoldUsed', '1');
+  SoundManager.holdUse();
   if (heldIdx === null) {
     heldIdx = currentIdx;
-    currentIdx = nextIdx;
-    nextIdx = randomDropIdx();
+    currentIdx  = nextIdx;
+    nextIdx     = nextNextIdx;
+    nextNextIdx = randomDropIdx();
     drawNextMonster();
+    drawNextNextMonster();
   } else {
     const tmp = heldIdx;
     heldIdx = currentIdx;
@@ -1396,6 +1568,39 @@ function resetHold() {
 function getTodayKey() {
   const d = new Date();
   return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+}
+
+function dateKeyForOffset(daysAgo) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+}
+
+// ===== デイリーミッション連続達成日数（ストリーク） =====
+function updateMissionStreak() {
+  const today = getTodayKey();
+  const yesterday = dateKeyForOffset(1);
+  const lastDate = localStorage.getItem('monsterMergeStreakLastDate');
+  let streak = parseInt(localStorage.getItem('monsterMergeStreak') || '0');
+
+  if (lastDate === today) {
+    // 同日内の再判定（通常は起こらないが念のため）
+  } else if (lastDate === yesterday) {
+    streak += 1;
+  } else {
+    streak = 1;
+  }
+  localStorage.setItem('monsterMergeStreak', String(streak));
+  localStorage.setItem('monsterMergeStreakLastDate', today);
+}
+
+// 表示用：前回達成が「昨日」より前で途切れている場合は0として見せる
+function getDisplayStreak() {
+  const today = getTodayKey();
+  const yesterday = dateKeyForOffset(1);
+  const lastDate = localStorage.getItem('monsterMergeStreakLastDate');
+  const streak = parseInt(localStorage.getItem('monsterMergeStreak') || '0');
+  return (lastDate === today || lastDate === yesterday) ? streak : 0;
 }
 
 function getDailyMission() {
@@ -1440,6 +1645,17 @@ function renderMissionUI() {
     ? '✅ 達成済み'
     : `${Math.min(missionState.progress, missionState.target)}/${missionState.target}`;
   document.getElementById('mission-panel')?.classList.toggle('completed', !!missionState.completed);
+
+  const streakEl = document.getElementById('mission-streak');
+  if (streakEl) {
+    const streak = getDisplayStreak();
+    if (streak > 0) {
+      streakEl.textContent = `🔥 ${streak}日連続達成中`;
+      streakEl.classList.remove('hidden');
+    } else {
+      streakEl.classList.add('hidden');
+    }
+  }
 }
 
 function trackMissionProgress(newIdx) {
@@ -1458,14 +1674,6 @@ function trackMissionScore(finalScore) {
   }
 }
 
-function trackMissionCombo(mult) {
-  if (!missionState || missionState.completed) return;
-  if (missionState.trackType === 'combo' && mult >= missionState.comboReq) {
-    missionState.progress = 1;
-    checkMissionComplete();
-  }
-}
-
 function checkMissionComplete() {
   if (!missionState.completed && missionState.progress >= missionState.target) {
     missionState.completed = true;
@@ -1473,6 +1681,8 @@ function checkMissionComplete() {
     if (typeof isGameOver !== 'undefined' && !isGameOver && typeof score === 'number') {
       addScore(500);
     }
+    SoundManager.missionComplete();
+    updateMissionStreak();
     showMissionComplete();
   }
   saveMissionState();
@@ -1488,6 +1698,12 @@ function showMissionComplete() {
 }
 
 // ===== 難易度選択 =====
+function updateSoundToggleLabel() {
+  const btn = document.getElementById('sound-toggle-btn');
+  if (!btn) return;
+  btn.textContent = SoundManager.muted ? '🔇 サウンド: OFF' : '🔊 サウンド: ON';
+}
+
 function initDifficultyUI() {
   const labelEl = document.getElementById('difficulty-label');
   if (labelEl) labelEl.textContent = DIFFICULTIES[currentDifficulty].label;
@@ -1544,6 +1760,15 @@ function buildEvolutionBar() {
 
 // ===== 入力 =====
 function setupInput() {
+  // 初回操作でオーディオのロックを解除（ブラウザの自動再生制限対策）
+  const unlockOnce = () => { SoundManager.unlock(); document.removeEventListener('pointerdown', unlockOnce); };
+  document.addEventListener('pointerdown', unlockOnce, { once: true });
+
+  // ボタン全般に軽いクリック音（個別に専用音がある場合は上に重なる程度で自然に馴染む）
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('button')) SoundManager.buttonClick();
+  });
+
   // マウス
   containerEl.addEventListener('mousemove', e => {
     mouseX = e.clientX - containerEl.getBoundingClientRect().left;
@@ -1579,10 +1804,9 @@ function setupInput() {
 // ===== タイトル画面 =====
 function showTitle() {
   // ゲーム状態リセット
-  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0; mergeGraceEntries = []; resetHold();
+  isGameOver = false; score = 0; dangerFrames = 0; mergeGraceEntries = []; resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
-  document.getElementById('chain-display').textContent = 'x1';
   document.getElementById('gameover-screen').classList.add('hidden');
   document.getElementById('ranking-screen').classList.add('hidden');
   document.getElementById('shop-screen').classList.add('hidden');
@@ -1596,7 +1820,7 @@ function showTitle() {
 function startGame() {
   document.getElementById('title-screen').classList.add('hidden');
   Runner.run(runner, engine);
-  currentIdx = randomDropIdx(); nextIdx = randomDropIdx();
+  currentIdx = randomDropIdx(); nextIdx = randomDropIdx(); nextNextIdx = randomDropIdx(); drawNextNextMonster();
   drawNextMonster();
   maybeShowHoldTutorial();
 }
@@ -1664,22 +1888,22 @@ function triggerGameOver() {
   if (isGameOver) return;
   isGameOver = true;
   Runner.stop(runner);
+  SoundManager.gameOver();
   document.getElementById('final-score').textContent = score;
   document.getElementById('gameover-screen').classList.remove('hidden');
   autoSubmitScore();
 }
 
 function restartGame() {
-  isGameOver = false; score = 0; chainCount = 0; dangerFrames = 0; mergeGraceEntries = []; resetHold();
+  isGameOver = false; score = 0; dangerFrames = 0; mergeGraceEntries = []; resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
-  document.getElementById('chain-display').textContent = 'x1';
   document.getElementById('gameover-screen').classList.add('hidden');
   for (const m of bodies) World.remove(world, m.body);
   bodies = [];
   rebuildWalls();
   Runner.run(runner, engine);
-  currentIdx = randomDropIdx(); nextIdx = randomDropIdx();
+  currentIdx = randomDropIdx(); nextIdx = randomDropIdx(); nextNextIdx = randomDropIdx(); drawNextNextMonster();
   drawNextMonster();
 }
 
@@ -1710,6 +1934,7 @@ function doSubmitScore(name) {
   if (!window.submitScore) return;
   window.submitScore(name, score).then((result) => {
     const updated = result && result.updated;
+    if (updated) SoundManager.rankUpdate();
     const message = updated
       ? `🎉 ${name} さんの自己ベストを更新！`
       : `✅ ${name} として記録済み（自己ベスト: ${result ? result.best : score}）`;
@@ -1817,6 +2042,15 @@ function adjustColor(hex, n) {
   // ===== ショップ =====
   document.getElementById('shop-btn').addEventListener('click', openShop);
   document.getElementById('shop-close-btn').addEventListener('click', closeShop);
+
+  // ===== サウンド ON/OFF =====
+  updateSoundToggleLabel();
+  document.getElementById('sound-toggle-btn').addEventListener('click', () => {
+    SoundManager.unlock(); // 未初期化ならここで初期化も兼ねる
+    const muted = SoundManager.toggleMute();
+    updateSoundToggleLabel();
+    if (!muted) SoundManager.buttonClick();
+  });
 
   // ===== テーマ選択 =====
   document.getElementById('theme-btn').addEventListener('click', () => {

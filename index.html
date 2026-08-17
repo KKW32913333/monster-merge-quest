@@ -68,22 +68,22 @@
       <div id="header-bottom-row">
         <div id="score-panel">
           <div class="score-block">
-            <span class="score-label">💰 GOLD</span>
+            <span class="score-label">💰 現在のスコア</span>
             <span id="score-display">0</span>
           </div>
           <div class="score-block">
-            <span class="score-label">👑 BEST</span>
+            <span class="score-label">👑 自己ベスト</span>
             <span id="best-display">0</span>
-          </div>
-          <div class="score-block chain-block">
-            <span class="score-label">⚔️ COMBO</span>
-            <span id="chain-display">x1</span>
           </div>
         </div>
         <div id="preview-panel-group">
           <div id="next-panel">
             <span class="score-label">NEXT</span>
             <canvas id="next-canvas" width="60" height="60"></canvas>
+          </div>
+          <div id="next-next-panel">
+            <span class="score-label">NEXT+1</span>
+            <canvas id="next-next-canvas" width="44" height="44"></canvas>
           </div>
           <div id="hold-panel" title="ホールド（現在のモンスターをキープ）">
             <span class="score-label">HOLD</span>
@@ -119,12 +119,14 @@
           <div id="mission-desc">-</div>
           <div id="mission-bar"><div id="mission-bar-fill"></div></div>
           <div id="mission-status">0/0</div>
+          <div id="mission-streak" class="hidden">🔥 0日連続達成中</div>
         </div>
 
         <button id="start-btn">⚔️ 冒険を始める！</button>
         <button id="title-ranking-btn">🏆 殿堂ランキング</button>
         <button id="difficulty-btn">🎚️ 難易度: <span id="difficulty-label">中級</span></button>
         <button id="theme-btn">🎨 テーマを選ぶ</button>
+        <button id="sound-toggle-btn">🔊 サウンド: ON</button>
       </div>
     </div>
 
