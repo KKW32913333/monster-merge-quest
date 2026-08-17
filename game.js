@@ -887,6 +887,31 @@ const SHOP_ITEMS = [
   { id: 'grace_time',     name: '⏱️ 猶予タイム', cost: 60,  desc: '5秒間、危険ラインの判定を止める' },
 ];
 
+// ===== 盤面の状況から「今使うと良いアイテム」を判定 =====
+// ゴールドが足りない場合はおすすめしない
+function getShopRecommendation() {
+  if (!bodies.length) return null;
+
+  const topY = Math.min(...bodies.map(m => m.body.position.y - monsterDef(m.idx).radius));
+  const nearDanger = topY < 170; // 危険ラインに近い高さまで積み上がっている
+
+  if (nearDanger || Date.now() < mergeGraceEntries.reduce((max,e)=>Math.max(max,e.until),0)) {
+    if (score >= 200) return { id: 'bomb_clear', reason: '盤面が危険ラインに近づいています。今のうちに上段を片付けましょう。' };
+    if (score >= 60)  return { id: 'grace_time',  reason: '盤面が危険ラインに近づいています。少し猶予を作って落ち着いて置きましょう。' };
+    return null;
+  }
+
+  // 同じ階層のモンスターが多く滞留＝合体が進んでいない状況
+  const counts = {};
+  bodies.forEach(m => { if (typeof m.idx === 'number') counts[m.idx] = (counts[m.idx] || 0) + 1; });
+  const maxCount = Object.values(counts).length ? Math.max(...Object.values(counts)) : 0;
+  if (maxCount >= 6 && score >= 100) {
+    return { id: 'rainbow_charge', reason: '同じ階層のモンスターが盤面に溜まっています。虹スライムで一気にさばきましょう。' };
+  }
+
+  return null;
+}
+
 function openShop() {
   if (isGameOver) return;
   renderShop();
@@ -901,12 +926,25 @@ function renderShop() {
   document.getElementById('shop-gold').textContent = score;
   const list = document.getElementById('shop-list');
   list.innerHTML = '';
+
+  const recommendation = getShopRecommendation();
+
+  const hintEl = document.getElementById('shop-hint');
+  if (recommendation) {
+    hintEl.textContent = '💡 ' + recommendation.reason;
+    hintEl.classList.remove('hidden');
+  } else {
+    hintEl.classList.add('hidden');
+  }
+
   SHOP_ITEMS.forEach(item => {
     const btn = document.createElement('button');
     const affordable = score >= item.cost;
-    btn.className = 'shop-item' + (affordable ? '' : ' disabled');
+    const isRecommended = recommendation && recommendation.id === item.id;
+    btn.className = 'shop-item' + (affordable ? '' : ' disabled') + (isRecommended ? ' recommended' : '');
     btn.disabled = !affordable;
     btn.innerHTML = `
+      ${isRecommended ? '<span class="shop-item-badge">おすすめ！</span>' : ''}
       <span class="shop-item-name">${item.name}</span>
       <span class="shop-item-desc">${item.desc}</span>
       <span class="shop-item-cost">💰 ${item.cost}</span>
@@ -968,7 +1006,22 @@ function randomDropIdx() {
   const roll = Math.random();
   if (roll < 0.025) return 'bomb';
   if (roll < 0.055) return 'rainbow';
-  return Math.floor(Math.random() * DIFFICULTIES[currentDifficulty].dropPool);
+
+  // 階層が上がるほど出現率が下がる重み付き抽選（大きい・レアなツムほど出にくい）
+  const pool = DIFFICULTIES[currentDifficulty].dropPool;
+  let total = 0;
+  const weights = [];
+  for (let i = 0; i < pool; i++) {
+    const w = pool - i; // 例: pool=5 → [5,4,3,2,1]
+    weights.push(w);
+    total += w;
+  }
+  let r = Math.random() * total;
+  for (let i = 0; i < pool; i++) {
+    if (r < weights[i]) return i;
+    r -= weights[i];
+  }
+  return 0;
 }
 
 // ===== 危険ゾーン =====
@@ -1293,6 +1346,7 @@ function drawHoldMonster() {
 
 function doHold() {
   if (!canHold || isGameOver || isDropping) return;
+  localStorage.setItem('monsterMergeHoldUsed', '1');
   if (heldIdx === null) {
     heldIdx = currentIdx;
     currentIdx = nextIdx;
@@ -1310,7 +1364,12 @@ function doHold() {
 
 function updateHoldButtonState() {
   const panel = document.getElementById('hold-panel');
-  if (panel) panel.classList.toggle('disabled', !canHold);
+  if (panel) {
+    panel.classList.toggle('disabled', !canHold);
+    // まだ一度もホールドを使ったことがない場合、使えるタイミングでそっと目立たせる
+    const everUsed = localStorage.getItem('monsterMergeHoldUsed');
+    panel.classList.toggle('hold-hint-pulse', canHold && heldIdx === null && !everUsed);
+  }
 }
 
 function resetHold() {
@@ -1526,6 +1585,36 @@ function startGame() {
   Runner.run(runner, engine);
   currentIdx = randomDropIdx(); nextIdx = randomDropIdx();
   drawNextMonster();
+  maybeShowHoldTutorial();
+}
+
+// ===== HOLD機能の使い方案内（初回プレイ時のみ） =====
+function maybeShowHoldTutorial() {
+  if (localStorage.getItem('monsterMergeHoldTutorialShown')) return;
+  localStorage.setItem('monsterMergeHoldTutorialShown', '1');
+
+  setTimeout(() => {
+    const panel = document.getElementById('hold-panel');
+    if (!panel) return;
+    const existing = document.getElementById('hold-tutorial-tip');
+    if (existing) existing.remove();
+
+    const tip = document.createElement('div');
+    tip.id = 'hold-tutorial-tip';
+    tip.innerHTML = `
+      <div id="hold-tutorial-arrow"></div>
+      <div id="hold-tutorial-box">
+        <div id="hold-tutorial-title">💡 HOLDってなに？</div>
+        <div id="hold-tutorial-text">今のモンスターを1体だけキープできます。タップして後で使いましょう！</div>
+        <button id="hold-tutorial-close">わかった！</button>
+      </div>
+    `;
+    document.getElementById('app').appendChild(tip);
+
+    const dismiss = () => tip.remove();
+    document.getElementById('hold-tutorial-close').addEventListener('click', dismiss);
+    setTimeout(dismiss, 6000);
+  }, 600);
 }
 
 // ===== 確認ダイアログ =====
