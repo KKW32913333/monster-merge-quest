@@ -58,7 +58,7 @@ function getPlayerId() {
 window.submitScore = async function(name, score) {
   if (!db) {
     console.warn("Firebase が未設定です。firebaseConfig を設定してください。");
-    return;
+    return { updated: false, reason: 'no-db' };
   }
   try {
     const playerId = getPlayerId();
@@ -74,11 +74,14 @@ window.submitScore = async function(name, score) {
         updatedAt: serverTimestamp()
       }, { merge: true });
       console.log(`✅ 自己ベスト更新: ${name} - ${newScore}`);
+      return { updated: true, best: newScore };
     } else {
       console.log(`ℹ️ 自己ベスト（${prevScore}）を超えなかったため、ランキングは更新されませんでした`);
+      return { updated: false, best: prevScore };
     }
   } catch (err) {
     console.error("❌ スコア登録エラー:", err);
+    return { updated: false, reason: 'error' };
   }
 };
 

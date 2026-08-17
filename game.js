@@ -952,7 +952,10 @@ function dropMonster() {
   isDropping = true;
   const r = monsterDef(currentIdx).radius;
   const cx = Math.max(r + 5, Math.min(W - r - 5, mouseX));
-  addMonster(currentIdx, cx, 55, false);
+  const newBody = addMonster(currentIdx, cx, 55, false);
+  // 出現直後は必ず危険ラインの範囲内から始まるため、落下して抜けるまで少し猶予を与える
+  // （連続でどんどん落とすと常にどれかが出現直後の状態になり、誤ってゲームオーバーになるのを防ぐ）
+  addDangerGrace(newBody, 700 + r * 8);
   currentIdx = nextIdx;
   nextIdx    = randomDropIdx();
   drawNextMonster();
@@ -1009,13 +1012,6 @@ function drawMonsterAt(ctx, idx, x, y, angle) {
   const r   = mon.radius;
   ctx.save();
   ctx.translate(x, y);
-
-  // 外側グロー
-  const glow = ctx.createRadialGradient(0, 0, r*0.7, 0, 0, r*1.35);
-  glow.addColorStop(0, 'transparent');
-  glow.addColorStop(1, mon.magic + '33');
-  ctx.beginPath(); ctx.arc(0, 0, r*1.35, 0, Math.PI*2);
-  ctx.fillStyle = glow; ctx.fill();
 
   // クリップ円
   ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.clip();
@@ -1567,14 +1563,8 @@ function triggerGameOver() {
   isGameOver = true;
   Runner.stop(runner);
   document.getElementById('final-score').textContent = score;
-  // スコア登録欄をリセット
-  document.getElementById('gameover-name-section').innerHTML = `
-    <input id="player-name" type="text" placeholder="冒険者の名前..." maxlength="12">
-    <button id="submit-score-btn">殿堂入り</button>
-  `;
-  // 登録ボタンの再バインド
-  document.getElementById('submit-score-btn').addEventListener('click', submitScoreHandler);
   document.getElementById('gameover-screen').classList.remove('hidden');
+  autoSubmitScore();
 }
 
 function restartGame() {
@@ -1591,17 +1581,52 @@ function restartGame() {
   drawNextMonster();
 }
 
-// ===== スコア登録ハンドラ =====
-function submitScoreHandler() {
-  const name = document.getElementById('player-name').value.trim() || '名無し';
-  if (window.submitScore) {
-    window.submitScore(name, score).then(() => {
-      document.getElementById('gameover-name-section').innerHTML =
-        '<div style="color:#44aa55;font-size:0.85rem;">✅ 殿堂入り！</div>';
-      // 2秒後にタイトルへ
-      setTimeout(() => showTitle(), 2000);
+// ===== スコア自動登録 =====
+// 手動での「殿堂入り」ボタン操作は不要。保存済みの名前で自動的に送信する。
+// 初回のみ名前を尋ね、以降はその名前を使い回す（変更も可能）。
+function autoSubmitScore() {
+  const savedName = localStorage.getItem('monsterMergePlayerName');
+  if (!savedName) {
+    const section = document.getElementById('gameover-name-section');
+    section.innerHTML = `
+      <input id="player-name" type="text" placeholder="冒険者の名前..." maxlength="12">
+      <button id="submit-score-btn">殿堂入り</button>
+    `;
+    document.getElementById('submit-score-btn').addEventListener('click', () => {
+      const name = (document.getElementById('player-name').value.trim() || '名無し').slice(0, 12);
+      localStorage.setItem('monsterMergePlayerName', name);
+      doSubmitScore(name);
     });
+    return;
   }
+  doSubmitScore(savedName);
+}
+
+function doSubmitScore(name) {
+  const section = document.getElementById('gameover-name-section');
+  section.innerHTML = '<div style="color:var(--text-dim);font-size:0.75rem;">ランキングを確認中...</div>';
+  if (!window.submitScore) return;
+  window.submitScore(name, score).then((result) => {
+    const updated = result && result.updated;
+    const message = updated
+      ? `🎉 ${name} さんの自己ベストを更新！`
+      : `✅ ${name} として記録済み（自己ベスト: ${result ? result.best : score}）`;
+    section.innerHTML = `
+      <div style="color:#5fcf7a;font-size:0.85rem;">${message}</div>
+      <button id="change-name-btn" style="margin-top:8px;font-size:0.62rem;">名前を変更する</button>
+    `;
+    document.getElementById('change-name-btn').addEventListener('click', () => {
+      const current = localStorage.getItem('monsterMergePlayerName') || '';
+      const input = prompt('冒険者の名前を入力してください（12文字まで）', current);
+      if (input && input.trim()) {
+        const trimmed = input.trim().slice(0, 12);
+        localStorage.setItem('monsterMergePlayerName', trimmed);
+        doSubmitScore(trimmed);
+      }
+    });
+  }).catch(() => {
+    section.innerHTML = '<div style="color:var(--accent-red);font-size:0.75rem;">登録に失敗しました</div>';
+  });
 }
 
 // ===== ボタンバインドはDOMContentLoaded内で行う =====
