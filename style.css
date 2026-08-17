@@ -993,6 +993,7 @@ button {
   font-size: 0.85rem; font-weight: bold; color: var(--accent-gold-bright);
   white-space: nowrap;
 }
+.shop-item-cost.shop-item-uses { color: var(--accent-green, #43a047); font-size: 0.7rem; }
 .shop-item.recommended {
   border-color: var(--accent-gold-bright);
   box-shadow: 0 0 12px var(--glow-bright);

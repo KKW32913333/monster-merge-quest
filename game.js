@@ -917,13 +917,15 @@ function addDangerGrace(body, ms) {
 
 // ===== ショップ（ゲーム中に貯めたゴールドをその場で使う） =====
 const SHOP_ITEMS = [
-  { id: 'bomb_clear',     name: '💣 危険回避',   cost: 400, desc: '盤面上部の高いモンスターを3体まとめて消す' },
+  { id: 'bomb_clear',     name: '💣 危険回避',   free: true, maxUses: 3, desc: '盤面上部の高いモンスターを3体まとめて消す（1プレイ3回まで無料）' },
   { id: 'rainbow_charge', name: '🌈 虹チャージ', cost: 220, desc: '次に落とすモンスターを虹スライムに変える' },
   { id: 'grace_time',     name: '⏱️ 猶予タイム', cost: 150, desc: '5秒間、危険ラインの判定を止める' },
 ];
 
+let dangerAvoidUsesLeft = 3; // 「危険回避」の1プレイあたりの残り無料使用回数
+
 // ===== 盤面の状況から「今使うと良いアイテム」を判定 =====
-// ゴールドが足りない場合はおすすめしない
+// ゴールドが足りない/無料回数を使い切っている場合はおすすめしない
 function getShopRecommendation() {
   if (!bodies.length) return null;
 
@@ -931,7 +933,7 @@ function getShopRecommendation() {
   const nearDanger = topY < 170; // 危険ラインに近い高さまで積み上がっている
 
   if (nearDanger || Date.now() < mergeGraceEntries.reduce((max,e)=>Math.max(max,e.until),0)) {
-    if (gold >= 400) return { id: 'bomb_clear', reason: '盤面が危険ラインに近づいています。今のうちに上段を片付けましょう。' };
+    if (dangerAvoidUsesLeft > 0) return { id: 'bomb_clear', reason: '盤面が危険ラインに近づいています。今のうちに上段を片付けましょう。' };
     if (gold >= 150) return { id: 'grace_time',  reason: '盤面が危険ラインに近づいています。少し猶予を作って落ち着いて置きましょう。' };
     return null;
   }
@@ -974,15 +976,18 @@ function renderShop() {
 
   SHOP_ITEMS.forEach(item => {
     const btn = document.createElement('button');
-    const affordable = gold >= item.cost;
+    const affordable = item.free ? dangerAvoidUsesLeft > 0 : gold >= item.cost;
     const isRecommended = recommendation && recommendation.id === item.id;
     btn.className = 'shop-item' + (affordable ? '' : ' disabled') + (isRecommended ? ' recommended' : '');
     btn.disabled = !affordable;
+    const costHtml = item.free
+      ? `<span class="shop-item-cost shop-item-uses">残り${dangerAvoidUsesLeft}/${item.maxUses}回</span>`
+      : `<span class="shop-item-cost">💰 ${item.cost}</span>`;
     btn.innerHTML = `
       ${isRecommended ? '<span class="shop-item-badge">おすすめ！</span>' : ''}
       <span class="shop-item-name">${item.name}</span>
       <span class="shop-item-desc">${item.desc}</span>
-      <span class="shop-item-cost">💰 ${item.cost}</span>
+      ${costHtml}
     `;
     btn.addEventListener('click', () => buyShopItem(item.id));
     list.appendChild(btn);
@@ -991,10 +996,16 @@ function renderShop() {
 
 function buyShopItem(id) {
   const item = SHOP_ITEMS.find(i => i.id === id);
-  if (!item || gold < item.cost || isGameOver) return;
+  if (!item || isGameOver) return;
 
-  gold -= item.cost;
-  document.getElementById('gold-display').textContent = gold;
+  if (item.free) {
+    if (dangerAvoidUsesLeft <= 0) return;
+    dangerAvoidUsesLeft--;
+  } else {
+    if (gold < item.cost) return;
+    gold -= item.cost;
+    document.getElementById('gold-display').textContent = gold;
+  }
   SoundManager.shopBuy();
 
   if (id === 'bomb_clear') {
@@ -1016,7 +1027,7 @@ function buyShopItem(id) {
     bodies.forEach(m => addDangerGrace(m.body, 5000));
   }
 
-  showLevelUp(`🛒 ${item.name} 購入！`);
+  showLevelUp(`🛒 ${item.name} 使用！`);
   renderShop();
 }
 
@@ -2287,7 +2298,7 @@ function setupInput() {
 // ===== タイトル画面 =====
 function showTitle() {
   // ゲーム状態リセット
-  isGameOver = false; score = 0; gold = 0; dangerFrames = 0; mergeGraceEntries = []; resetHold();
+  isGameOver = false; score = 0; gold = 0; dangerAvoidUsesLeft = 3; dangerFrames = 0; mergeGraceEntries = []; resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
   document.getElementById('gold-display').textContent = '0';
@@ -2379,7 +2390,7 @@ function triggerGameOver() {
 }
 
 function restartGame() {
-  isGameOver = false; score = 0; gold = 0; dangerFrames = 0; mergeGraceEntries = []; resetHold();
+  isGameOver = false; score = 0; gold = 0; dangerAvoidUsesLeft = 3; dangerFrames = 0; mergeGraceEntries = []; resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
   document.getElementById('gold-display').textContent = '0';
