@@ -564,7 +564,7 @@ html, body {
 
 #title-logo {
   width: 132px; height: 132px;
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  border-radius: 24px;
   overflow: hidden;
   box-shadow: 0 4px 24px var(--glow-warm);
   animation: titleFloat 3s ease-in-out infinite;

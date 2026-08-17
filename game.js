@@ -804,7 +804,7 @@ function processMergeQueue() {
   }
   newIdx = Math.min(newIdx, MONSTERS.length - 1);
 
-  const base = MONSTERS[newIdx].score * 10 * DIFFICULTIES[currentDifficulty].scoreMult;
+  const base = MONSTERS[newIdx].score * 6 * DIFFICULTIES[currentDifficulty].scoreMult;
   addScore(Math.round(base));
 
   spawnMagicExplosion(mx, my, monsterDef(mA.idx), 1);
@@ -836,7 +836,7 @@ function handleBombExplosion(mA, mB, mx, my) {
   const affected = [mA, mB];
   affected.forEach(m => removeMonster(m));
 
-  const bonus = 30 * DIFFICULTIES[currentDifficulty].scoreMult;
+  const bonus = 20 * DIFFICULTIES[currentDifficulty].scoreMult;
   addScore(Math.round(bonus * affected.length));
 
   spawnMagicExplosion(mx, my, { magic: '#ff5500' }, 5);
@@ -854,7 +854,7 @@ function handleDemonFusion(mA, mB, mx, my) {
   removeMonster(mA);
   removeMonster(mB);
 
-  const bonus = MONSTERS[topIdx].score * 100 * DIFFICULTIES[currentDifficulty].scoreMult;
+  const bonus = MONSTERS[topIdx].score * 25 * DIFFICULTIES[currentDifficulty].scoreMult;
   addScore(Math.round(bonus));
 
   spawnMagicExplosion(mx, my, monsterDef(topIdx), 8);
@@ -906,9 +906,9 @@ function addDangerGrace(body, ms) {
 
 // ===== ショップ（ゲーム中に貯めたゴールドをその場で使う） =====
 const SHOP_ITEMS = [
-  { id: 'bomb_clear',     name: '💣 危険回避',   cost: 200, desc: '盤面上部の高いモンスターを3体まとめて消す' },
-  { id: 'rainbow_charge', name: '🌈 虹チャージ', cost: 100, desc: '次に落とすモンスターを虹スライムに変える' },
-  { id: 'grace_time',     name: '⏱️ 猶予タイム', cost: 60,  desc: '5秒間、危険ラインの判定を止める' },
+  { id: 'bomb_clear',     name: '💣 危険回避',   cost: 400, desc: '盤面上部の高いモンスターを3体まとめて消す' },
+  { id: 'rainbow_charge', name: '🌈 虹チャージ', cost: 220, desc: '次に落とすモンスターを虹スライムに変える' },
+  { id: 'grace_time',     name: '⏱️ 猶予タイム', cost: 150, desc: '5秒間、危険ラインの判定を止める' },
 ];
 
 // ===== 盤面の状況から「今使うと良いアイテム」を判定 =====
@@ -920,8 +920,8 @@ function getShopRecommendation() {
   const nearDanger = topY < 170; // 危険ラインに近い高さまで積み上がっている
 
   if (nearDanger || Date.now() < mergeGraceEntries.reduce((max,e)=>Math.max(max,e.until),0)) {
-    if (score >= 200) return { id: 'bomb_clear', reason: '盤面が危険ラインに近づいています。今のうちに上段を片付けましょう。' };
-    if (score >= 60)  return { id: 'grace_time',  reason: '盤面が危険ラインに近づいています。少し猶予を作って落ち着いて置きましょう。' };
+    if (score >= 400) return { id: 'bomb_clear', reason: '盤面が危険ラインに近づいています。今のうちに上段を片付けましょう。' };
+    if (score >= 150) return { id: 'grace_time',  reason: '盤面が危険ラインに近づいています。少し猶予を作って落ち着いて置きましょう。' };
     return null;
   }
 
@@ -929,7 +929,7 @@ function getShopRecommendation() {
   const counts = {};
   bodies.forEach(m => { if (typeof m.idx === 'number') counts[m.idx] = (counts[m.idx] || 0) + 1; });
   const maxCount = Object.values(counts).length ? Math.max(...Object.values(counts)) : 0;
-  if (maxCount >= 6 && score >= 100) {
+  if (maxCount >= 6 && score >= 220) {
     return { id: 'rainbow_charge', reason: '同じ階層のモンスターが盤面に溜まっています。虹スライムで一気にさばきましょう。' };
   }
 
@@ -1679,7 +1679,7 @@ function checkMissionComplete() {
     missionState.completed = true;
     // ミッション達成でゴールドボーナスを付与（プレイ中のみ。ショップで使える）
     if (typeof isGameOver !== 'undefined' && !isGameOver && typeof score === 'number') {
-      addScore(500);
+      addScore(300);
     }
     SoundManager.missionComplete();
     updateMissionStreak();
@@ -1692,7 +1692,7 @@ function checkMissionComplete() {
 function showMissionComplete() {
   const ex = document.getElementById('mission-complete-popup'); if (ex) ex.remove();
   const el = document.createElement('div'); el.id = 'mission-complete-popup';
-  el.innerHTML = '🎉 <span style="font-size:0.9rem">デイリーミッション達成！ +500 GOLD</span>';
+  el.innerHTML = '🎉 <span style="font-size:0.9rem">デイリーミッション達成！ +300 GOLD</span>';
   document.getElementById('app').appendChild(el);
   setTimeout(() => el.remove(), 1800);
 }
