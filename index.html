@@ -113,6 +113,11 @@
 
     <!-- タイトル画面 -->
     <div id="title-screen" class="hidden">
+      <div id="title-settings-cluster">
+        <button id="difficulty-btn" class="title-icon-btn" title="難易度">🎚️</button>
+        <button id="theme-btn" class="title-icon-btn" title="テーマを選ぶ">🎨</button>
+        <button id="sound-toggle-btn" class="title-icon-btn" title="サウンド">🔊</button>
+      </div>
       <div id="title-box">
         <div id="title-logo"><img src="icon-180.png" alt="Monster Merge Quest"></div>
         <div id="title-name">MONSTER<br>MERGE QUEST</div>
@@ -127,13 +132,12 @@
         </div>
 
         <button id="start-btn">⚔️ 冒険を始める！</button>
-        <button id="catch-game-btn">🧺 モンスターキャッチ</button>
+        <button id="catch-game-btn">🧺 モンスターキャッチ（ミニゲーム）</button>
         <button id="title-ranking-btn">🏆 殿堂ランキング</button>
-        <button id="difficulty-btn">🎚️ 難易度: <span id="difficulty-label">中級</span></button>
-        <button id="theme-btn">🎨 テーマを選ぶ</button>
-        <button id="sound-toggle-btn">🔊 サウンド: ON</button>
       </div>
     </div>
+
+    <!-- 設定ポップアップ（難易度/テーマ/サウンドの共通コンテナ） -->
 
     <!-- ゲームオーバー -->
     <div id="gameover-screen" class="hidden">
@@ -261,6 +265,7 @@
           <div id="catch-ready-title">🧺 モンスターキャッチ</div>
           <div id="catch-ready-desc">
             60秒間で、落ちてくるモンスターを<br>カゴでキャッチしてスコアを稼ごう！<br>
+            <span class="catch-hint">👆 画面のどこでも左右にドラッグでカゴが動きます</span><br>
             <span class="catch-warn">💣 爆弾スライムを3回キャッチするとゲームオーバー！</span>
           </div>
           <button id="catch-start-btn">▶ スタート</button>

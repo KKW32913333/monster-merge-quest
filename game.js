@@ -1749,19 +1749,20 @@ function syncBestScoreFromRanking() {
 function updateSoundToggleLabel() {
   const btn = document.getElementById('sound-toggle-btn');
   if (!btn) return;
-  btn.textContent = SoundManager.muted ? '🔇 サウンド: OFF' : '🔊 サウンド: ON';
+  btn.textContent = SoundManager.muted ? '🔇' : '🔊';
+  btn.title = SoundManager.muted ? 'サウンド: OFF（タップでON）' : 'サウンド: ON（タップでOFF）';
 }
 
 function initDifficultyUI() {
-  const labelEl = document.getElementById('difficulty-label');
-  if (labelEl) labelEl.textContent = DIFFICULTIES[currentDifficulty].label;
+  const btn = document.getElementById('difficulty-btn');
+  if (btn) btn.title = `難易度：${DIFFICULTIES[currentDifficulty].label}`;
 }
 
 function applyDifficulty(id) {
   currentDifficulty = id;
   localStorage.setItem('monsterMergeDifficulty', id);
-  const labelEl = document.getElementById('difficulty-label');
-  if (labelEl) labelEl.textContent = DIFFICULTIES[id].label;
+  const btn = document.getElementById('difficulty-btn');
+  if (btn) btn.title = `難易度：${DIFFICULTIES[id].label}`;
   if (engine) engine.gravity.y = DIFFICULTIES[id].gravity;
 }
 
@@ -1833,17 +1834,38 @@ function initCatchCanvas() {
   catchCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
   if (!catchCanvas.dataset.bound) {
-    catchCanvas.addEventListener('pointerdown', onCatchPointer);
-    catchCanvas.addEventListener('pointermove', onCatchPointer);
+    catchCanvas.addEventListener('pointerdown', onCatchPointerDown);
+    catchCanvas.addEventListener('pointermove', onCatchPointerMove);
+    catchCanvas.addEventListener('pointerup', onCatchPointerUp);
+    catchCanvas.addEventListener('pointercancel', onCatchPointerUp);
+    catchCanvas.addEventListener('pointerleave', onCatchPointerUp);
     catchCanvas.dataset.bound = '1';
   }
   catcherX = cssW / 2;
   catcherTargetX = catcherX;
 }
 
-function onCatchPointer(e) {
+// 指がカゴを覆い隠してしまう問題への対策：
+// 触れた位置に直接カゴを合わせるのではなく、ドラッグした「移動量（相対値）」でカゴを動かす。
+// これにより、画面のどこを触ってもカゴを操作でき、カゴの真上を触る必要がなくなる。
+let catchDragActive = false;
+let catchDragStartX = null;
+let catchDragStartCatcherX = null;
+
+function onCatchPointerDown(e) {
   const rect = catchCanvas.getBoundingClientRect();
-  catcherTargetX = e.clientX - rect.left;
+  catchDragActive = true;
+  catchDragStartX = e.clientX - rect.left;
+  catchDragStartCatcherX = catcherTargetX;
+}
+function onCatchPointerMove(e) {
+  if (!catchDragActive) return;
+  const rect = catchCanvas.getBoundingClientRect();
+  const curX = e.clientX - rect.left;
+  catcherTargetX = catchDragStartCatcherX + (curX - catchDragStartX);
+}
+function onCatchPointerUp() {
+  catchDragActive = false;
 }
 
 function resetCatchState() {
@@ -1951,7 +1973,9 @@ function catchGameLoop(ts) {
   catcherX = Math.max(catcherW / 2, Math.min(catchWidth - catcherW / 2, catcherX));
 
   const effectiveCatcherW = Date.now() < catchMagnetUntil ? catcherW * 1.6 : catcherW;
-  const catcherTop = catchHeight - 54;
+  const basketDepth = 34; // drawCatcher()の高さhと一致させる
+  const basketTopY = catchHeight - 54;
+  const basketBottomY = basketTopY + basketDepth;
 
   for (let i = catchObjects.length - 1; i >= 0; i--) {
     const o = catchObjects[i];
@@ -1959,15 +1983,17 @@ function catchGameLoop(ts) {
     o.y += o.vy * f;
     o.rot += o.rotSpeed * f;
 
-    if (o.y + o.r >= catcherTop && o.y - o.r <= catchHeight) {
-      const withinX = Math.abs(o.x - catcherX) <= (effectiveCatcherW / 2 + o.r * 0.5);
+    // カゴの実際の奥行き範囲に入っていて、かつカゴの開口部の内側に
+    // ほぼ収まっている場合のみキャッチ成立（縁をかすっただけでは捕まえない）
+    if (o.y + o.r >= basketTopY && o.y - o.r <= basketBottomY) {
+      const withinX = Math.abs(o.x - catcherX) <= (effectiveCatcherW / 2 - o.r * 0.35);
       if (withinX) {
         onCatchObject(o);
         catchObjects.splice(i, 1);
         continue;
       }
     }
-    if (o.y - o.r > catchHeight) {
+    if (o.y - o.r > basketBottomY) {
       if (typeof o.idx === 'number') {
         catchCombo = 0;
         SoundManager.catchMiss();
