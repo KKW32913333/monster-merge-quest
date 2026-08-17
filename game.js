@@ -33,7 +33,7 @@ const MONSTERS = [
     img: loadMonsterImg('monster-centaur.png'), draw: drawOrc },
   { name: 'ミノタウロス', radius: 54,  color: '#3d1f0a', score: 21, magic: '#ff6622',
     img: loadMonsterImg('monster-minotaur.png'), draw: drawMinotaur },
-  { name: '魔女',         radius: 66,  color: '#330066', score: 28, magic: '#cc44ff',
+  { name: 'ウィッチ',     radius: 66,  color: '#330066', score: 28, magic: '#cc44ff',
     img: loadMonsterImg('monster-witch.png'), draw: drawWitch },
   { name: 'フェニックス', radius: 80,  color: '#cc3300', score: 36, magic: '#ff6600',
     img: loadMonsterImg('monster-phoenix.png'), draw: drawPhoenix },
@@ -47,11 +47,11 @@ const MONSTERS = [
 const SPECIAL_MONSTERS = {
   bomb: {
     name: '爆弾スライム', radius: 30, color: '#1a1a1a', magic: '#ff5500', score: 0,
-    draw: drawBombMonster, specialType: 'bomb',
+    img: loadMonsterImg('monster-bomb.png'), draw: drawBombMonster, specialType: 'bomb',
   },
   rainbow: {
     name: '虹スライム', radius: 30, color: '#ffffff', magic: '#ffffff', score: 0,
-    draw: drawRainbowMonster, specialType: 'rainbow',
+    img: loadMonsterImg('monster-rainbow.png'), draw: drawRainbowMonster, specialType: 'rainbow',
   },
 };
 
@@ -594,7 +594,7 @@ let holdCanvas, holdCtx;
 // ===== デイリーミッション =====
 const MISSION_POOL = [
   { id: 'merge_skeleton', desc: 'スケルトンを5体誕生させよう', target: 5,    trackIdx: 3 },
-  { id: 'merge_witch',    desc: '魔女を3体誕生させよう',       target: 3,    trackIdx: 6 },
+  { id: 'merge_witch',    desc: 'ウィッチを3体誕生させよう',       target: 3,    trackIdx: 6 },
   { id: 'reach_dragon',   desc: 'ドラゴンを1体誕生させよう',     target: 1,    trackIdx: 8 },
   { id: 'score_3000',     desc: '1プレイで3000ゴールド以上稼ごう', target: 3000, trackType: 'score' },
   { id: 'combo_4',        desc: 'コンボx4以上を1回出そう',       target: 1,    trackType: 'combo', comboReq: 4 },
