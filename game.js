@@ -697,47 +697,60 @@ function rebuildWalls() {
 
 // ===== 衝突・合体 =====
 function setupCollision() {
-  Events.on(engine, 'collisionStart', (event) => {
-    for (const pair of event.pairs) {
-      const a = pair.bodyA, b = pair.bodyB;
-      if (a.label === 'wall' || b.label === 'wall') continue;
-      const mA = bodies.find(m => m.body === a);
-      const mB = bodies.find(m => m.body === b);
-      if (!mA || !mB) continue;
-      if (mA.merging || mB.merging) continue;
+  function handlePair(pair) {
+    const a = pair.bodyA, b = pair.bodyB;
+    if (a.label === 'wall' || b.label === 'wall') return;
+    const mA = bodies.find(m => m.body === a);
+    const mB = bodies.find(m => m.body === b);
+    if (!mA || !mB) return;
+    if (mA.merging || mB.merging) return;
 
-      const defA = monsterDef(mA.idx), defB = monsterDef(mB.idx);
+    const defA = monsterDef(mA.idx), defB = monsterDef(mB.idx);
 
-      // 爆弾スライム：何と触れても爆発
-      if (defA.specialType === 'bomb' || defB.specialType === 'bomb') {
-        mA.merging = mB.merging = true;
-        mergeQueue.push([mA, mB, 'bomb']);
-        continue;
-      }
-
-      // 虹スライム：どのモンスターとも合体できるワイルドカード（虹同士は反応なし）
-      const hasRainbow = defA.specialType === 'rainbow' || defB.specialType === 'rainbow';
-      if (hasRainbow) {
-        if (defA.specialType === 'rainbow' && defB.specialType === 'rainbow') continue;
-        mA.merging = mB.merging = true;
-        mergeQueue.push([mA, mB, 'rainbow']);
-        continue;
-      }
-
-      // 魔王同士の共鳴：最上位のためこれ以上進化はしないが、
-      // 特別な演出と大量ボーナスが発生する（今までは何も起きなかった）
-      if (mA.idx === MONSTERS.length - 1 && mB.idx === MONSTERS.length - 1) {
-        mA.merging = mB.merging = true;
-        mergeQueue.push([mA, mB, 'demonfusion']);
-        continue;
-      }
-
-      // 通常合体：同じ階層同士のみ
-      if (mA.idx !== mB.idx) continue;
-      if (mA.idx >= MONSTERS.length - 1) continue;
+    // 爆弾スライム：何と触れても爆発（出現直後でも安全のため即座に反応させる）
+    if (defA.specialType === 'bomb' || defB.specialType === 'bomb') {
       mA.merging = mB.merging = true;
-      mergeQueue.push([mA, mB, 'normal']);
+      mergeQueue.push([mA, mB, 'bomb']);
+      return;
     }
+
+    // 出現直後（まだ十分に落下していない）同士の合体を防ぐ。
+    // 連続で投下すると、落ちきる前に上部で触れて即合体してしまう現象があったための対策。
+    // ここでスキップしても、接触したまま落下し続ける限りcollisionActiveで毎フレーム
+    // 再チェックされるため、閾値を超えた時点で正しく合体する。
+    const SPAWN_MERGE_MIN_Y = 115;
+    if (mA.body.position.y < SPAWN_MERGE_MIN_Y && mB.body.position.y < SPAWN_MERGE_MIN_Y) return;
+
+    // 虹スライム：どのモンスターとも合体できるワイルドカード（虹同士は反応なし）
+    const hasRainbow = defA.specialType === 'rainbow' || defB.specialType === 'rainbow';
+    if (hasRainbow) {
+      if (defA.specialType === 'rainbow' && defB.specialType === 'rainbow') return;
+      mA.merging = mB.merging = true;
+      mergeQueue.push([mA, mB, 'rainbow']);
+      return;
+    }
+
+    // 魔王同士の共鳴：最上位のためこれ以上進化はしないが、
+    // 特別な演出と大量ボーナスが発生する（今までは何も起きなかった）
+    if (mA.idx === MONSTERS.length - 1 && mB.idx === MONSTERS.length - 1) {
+      mA.merging = mB.merging = true;
+      mergeQueue.push([mA, mB, 'demonfusion']);
+      return;
+    }
+
+    // 通常合体：同じ階層同士のみ
+    if (mA.idx !== mB.idx) return;
+    if (mA.idx >= MONSTERS.length - 1) return;
+    mA.merging = mB.merging = true;
+    mergeQueue.push([mA, mB, 'normal']);
+  }
+
+  Events.on(engine, 'collisionStart', (event) => {
+    for (const pair of event.pairs) handlePair(pair);
+  });
+  // 出現直後で合体を見送ったペアも、接触したまま落下すればここで再評価される
+  Events.on(engine, 'collisionActive', (event) => {
+    for (const pair of event.pairs) handlePair(pair);
   });
 }
 
