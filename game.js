@@ -1268,7 +1268,7 @@ function spawnMagicExplosion(x, y, monster, intensity) {
 
 function spawnBlastWave(x, y, newIdx) {
   const br = MONSTERS[newIdx].radius * 4;
-  const f  = newIdx * 0.003;
+  const f  = newIdx * 0.002; // 吹き飛ぶ勢いを少し抑える
   for (const m of bodies) {
     if (m.merging) continue;
     const dx = m.body.position.x - x, dy = m.body.position.y - y;
@@ -1276,6 +1276,9 @@ function spawnBlastWave(x, y, newIdx) {
     if (dist < br && dist > 0) {
       const fo = 1 - dist/br;
       Body.applyForce(m.body, m.body.position, { x:(dx/dist)*f*fo, y:(dy/dist)*f*fo - f*0.4 });
+      // 爆風で吹き飛ばされて一時的に危険ラインにかかっても、
+      // 演出のせいでゲームオーバーにならないよう着地するまでの猶予を与える
+      addDangerGrace(m.body, 1200);
     }
   }
   for (let i = 0; i < 3; i++) {
