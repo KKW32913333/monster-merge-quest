@@ -575,7 +575,8 @@ let isTouching   = false;   // タッチ/マウス押下中
 let isDropping   = false;
 let isGameOver   = false;
 let mergeQueue   = [];
-let dangerFrames = 0;
+let dangerStartTime = null; // 危険状態になった実時刻（フレームレートに依存しないよう時間で管理）
+const DANGER_HOLD_MS = 2000; // この時間だけ連続でラインにかかるとゲームオーバー
 let mergeGraceEntries = []; // [{ id: body.id, until: timestamp }] 誕生直後の特定モンスターだけ危険判定を猶予する
 
 // ===== 難易度設定 =====
@@ -882,7 +883,7 @@ function handleDemonFusion(mA, mB, mx, my) {
 // ===== スコア加算共通処理（ミッション連携込み） =====
 function addScore(amount) {
   score += amount;
-  gold  += amount;
+  gold  += Math.round(amount * 0.6); // GOLDはスコアと異なる比率で増える独立した通貨
   document.getElementById('score-display').textContent = score;
   document.getElementById('gold-display').textContent = gold;
   if (score > bestScore) {
@@ -1088,12 +1089,13 @@ function checkDanger() {
     if (gracedIds && gracedIds.has(m.body.id)) continue; // 誕生直後のそのボールだけ猶予
     if (m.body.position.y - monsterDef(m.idx).radius < 62) { danger = true; break; }
   }
+
   if (danger) {
-    dangerFrames++;
-    document.getElementById('danger-line').style.opacity = 0.7 + 0.3 * Math.sin(Date.now() / 80);
-    if (dangerFrames > 120) triggerGameOver();
+    if (dangerStartTime === null) dangerStartTime = now;
+    document.getElementById('danger-line').style.opacity = 0.7 + 0.3 * Math.sin(now / 80);
+    if (now - dangerStartTime >= DANGER_HOLD_MS) triggerGameOver();
   } else {
-    dangerFrames = 0;
+    dangerStartTime = null;
     document.getElementById('danger-line').style.opacity = 0.8;
   }
 }
@@ -2298,7 +2300,7 @@ function setupInput() {
 // ===== タイトル画面 =====
 function showTitle() {
   // ゲーム状態リセット
-  isGameOver = false; score = 0; gold = 0; dangerAvoidUsesLeft = 3; dangerFrames = 0; mergeGraceEntries = []; resetHold();
+  isGameOver = false; score = 0; gold = 0; dangerAvoidUsesLeft = 3; dangerStartTime = null; mergeGraceEntries = []; resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
   document.getElementById('gold-display').textContent = '0';
@@ -2390,7 +2392,7 @@ function triggerGameOver() {
 }
 
 function restartGame() {
-  isGameOver = false; score = 0; gold = 0; dangerAvoidUsesLeft = 3; dangerFrames = 0; mergeGraceEntries = []; resetHold();
+  isGameOver = false; score = 0; gold = 0; dangerAvoidUsesLeft = 3; dangerStartTime = null; mergeGraceEntries = []; resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
   document.getElementById('gold-display').textContent = '0';
