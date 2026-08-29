@@ -1,1231 +1,293 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>MASQUERADE ― 仮面領の一夜</title>
-<meta name="description" content="正体を隠したまま王位を競う、一夜限りの仮面舞踏会カードゲーム">
-<meta name="theme-color" content="#1a1428">
-<link rel="manifest" href="./manifest.json">
-<link rel="icon" href="./favicon.ico" sizes="any">
-<link rel="icon" href="./favicon-16x16.png" type="image/png" sizes="16x16">
-<link rel="icon" href="./favicon-32x32.png" type="image/png" sizes="32x32">
-<link rel="icon" href="./favicon-48x48.png" type="image/png" sizes="48x48">
-<link rel="icon" href="./icon-192.png" type="image/png" sizes="192x192">
-<link rel="apple-touch-icon" href="./apple-touch-icon.png" sizes="180x180">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="MASQUERADE">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
-<style>
-:root{
-  /* ==== カラーテーマ：Velvet Masquerade（深い紫×金の豪華な配色） ====
-     白ベースが簡素に感じられたため、アイコン・スプラッシュ画像の世界観（深い紫・黒・金）に
-     寄せた、より舞踏会らしい豪奢な配色に変更。
-     他の提案は README.md の「配色プリセット」を参照。 */
-  --bg-deep:#1a1428;
-  --bg-mid:#2d2147;
-  --bg-panel:#241c38;
-  --gold:#d4af37;
-  --gold-light:#f0d789;
-  --gold-dim:#a8842a;
-  --velvet:#4a1942;
-  --velvet-light:#8b3a6b;
-  --sapphire:#2c4a7c;
-  --sapphire-light:#5686c9;
-  --ivory:#f0ead9;
-  --ivory-dim:#c4b8a0;
-  --ink:#1a1428;
-  --card-face:#f7f0da;
-  --card-face-shadow:#ddd0ab;
-  --bronze:#a8783c;
-  --silver:#9aa3ad;
-  --royal:#f0d789;
-  --success:#5c9c5c;
-  --danger:#c1495f;
-}
-*{box-sizing:border-box;}
-html,body{margin:0;padding:0; height:100%; background:#1a1428;}
-body{
-  min-height:100dvh;
-  background:
-    radial-gradient(ellipse 55% 38% at 10% -5%, rgba(212,175,55,0.20), transparent 60%),
-    radial-gradient(ellipse 55% 38% at 90% -5%, rgba(44,74,124,0.22), transparent 60%),
-    radial-gradient(ellipse 85% 55% at 50% 108%, rgba(139,58,107,0.20), transparent 62%),
-    linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-mid) 55%, var(--bg-deep) 100%);
-  color:var(--ivory);
-  font-family:'Zen Maru Gothic', sans-serif;
-  -webkit-font-smoothing:antialiased;
-  overflow-x:hidden;
-}
-body.table-mode{ overflow:hidden; }
-.serif{font-family:'Shippori Mincho', serif;}
-.display{font-family:'Cormorant Garamond', 'Shippori Mincho', serif;}
-
-/* ---------- ambient sparkle ---------- */
-.sparkle-layer{position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
-.sparkle{position:absolute; width:3px; height:3px; border-radius:50%; background:var(--gold); opacity:0; animation:twinkle 6s ease-in-out infinite; box-shadow:0 0 4px rgba(212,175,55,0.6);}
-@keyframes twinkle{
-  0%{opacity:0; transform:translateY(0) scale(.6);}
-  10%{opacity:.85; transform:translateY(-6px) scale(1.2);}
-  50%{opacity:.4; transform:translateY(-40px) scale(.9);}
-  100%{opacity:0; transform:translateY(-90px) scale(.5);}
-}
-.candle-glow{position:fixed; pointer-events:none; z-index:0; border-radius:50%; filter:blur(40px); mix-blend-mode:screen;}
-.candle-glow.a{ top:-8%; left:6%; width:38vw; height:38vw; background:radial-gradient(circle, rgba(212,175,55,0.28), transparent 65%); animation:flicker 7s ease-in-out infinite; }
-.candle-glow.b{ top:-10%; right:4%; width:34vw; height:34vw; background:radial-gradient(circle, rgba(44,74,124,0.26), transparent 65%); animation:flicker 9s ease-in-out infinite reverse; }
-.candle-glow.c{ bottom:-14%; left:50%; transform:translateX(-50%); width:70vw; height:40vw; background:radial-gradient(circle, rgba(74,25,66,0.22), transparent 65%); animation:flicker 11s ease-in-out infinite; }
-@keyframes flicker{ 0%,100%{opacity:.75; transform:scale(1);} 35%{opacity:1; transform:scale(1.06);} 55%{opacity:.6; transform:scale(.97);} 80%{opacity:.9; transform:scale(1.03);} }
-
-/* ---------- 舞踏会画面（対局中）専用のきらめき装飾 ----------
-   ゾーンの背景より手前・モーダルより奥のレイヤーに、金の粒とダイヤ型のグリントを漂わせる。
-   操作の邪魔をしないよう pointer-events:none を徹底している。 */
-.table-glint-layer{ position:fixed; inset:0; pointer-events:none; z-index:3; overflow:hidden; }
-.table-glint-dot{
-  position:absolute; width:4px; height:4px; border-radius:50%; background:var(--gold-light);
-  opacity:0; box-shadow:0 0 7px rgba(240,215,137,0.85), 0 0 2px rgba(255,255,255,0.9);
-  animation:tableGlintTwinkle 5.5s ease-in-out infinite;
-}
-@keyframes tableGlintTwinkle{
-  0%{ opacity:0; transform:translateY(0) scale(.5); }
-  12%{ opacity:1; transform:translateY(-8px) scale(1.3); }
-  50%{ opacity:.5; transform:translateY(-30px) scale(.9); }
-  100%{ opacity:0; transform:translateY(-70px) scale(.4); }
-}
-.table-glint-star{
-  position:absolute; width:14px; height:14px; opacity:0;
-  animation:tableGlintStar 4.2s ease-in-out infinite;
-}
-.table-glint-star::before, .table-glint-star::after{
-  content:''; position:absolute; top:50%; left:50%;
-  background:linear-gradient(90deg, transparent, var(--gold-light), transparent);
-}
-.table-glint-star::before{ width:100%; height:1.5px; transform:translate(-50%,-50%); }
-.table-glint-star::after{ width:1.5px; height:100%; transform:translate(-50%,-50%); }
-@keyframes tableGlintStar{
-  0%{ opacity:0; transform:scale(.3) rotate(0deg); }
-  15%{ opacity:.95; transform:scale(1.1) rotate(20deg); }
-  30%{ opacity:.5; transform:scale(.8) rotate(30deg); }
-  55%{ opacity:.8; transform:scale(1) rotate(50deg); }
-  100%{ opacity:0; transform:scale(.5) rotate(90deg); }
-}
-@media (prefers-reduced-motion: reduce){
-  .table-glint-dot, .table-glint-star{ animation:none; display:none; }
-}
-
-
-@media (prefers-reduced-motion: reduce){
-  .sparkle{animation:none; display:none;}
-  .candle-glow{animation:none;}
-}
-
-/* ---------- splash screen ---------- */
-/* 本編が白ベースになった今も、ここだけは意図的に暗いままにしている
-   （劇的な幕開け→明るい舞踏会本編、という演出上の効果を狙っている） */
-#splash-screen{
-  position:fixed; top:0; left:0; right:0; bottom:0; inset:0; z-index:9999;
-  height:100vh; height:100dvh; width:100%; width:100vw;
-  display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
-  padding:0 24px; overflow:hidden; cursor:pointer;
-  background-color:#1a1428;
-  background-image:
-    linear-gradient(180deg, rgba(10,7,16,0.05) 0%, rgba(10,7,16,0.05) 55%, rgba(10,7,16,0.55) 82%, rgba(6,4,10,0.78) 100%),
-    url('./splash-bg.jpg');
-  background-size:cover; background-position:center top; background-repeat:no-repeat;
-  transition:opacity .4s ease, transform .4s ease, visibility .4s ease;
-  animation:screenBreathe 6s ease-in-out infinite;
-}
-#splash-screen.dismissed{ opacity:0; visibility:hidden; pointer-events:none; transform:scale(1.03); }
-@keyframes screenBreathe{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.05); } }
-/* スマホなど縦長の画面では、このラッパー自体は特別な見た目を持たず、
-   #splash-screen いっぱいに広がるだけの「透明な入れ物」として振る舞う。 */
-.splash-frame{
-  position:relative; width:100%; height:100%;
-  display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
-}
-/* PC・タブレット横向きなど横に広い画面では、背景画像を画面全体に引き伸ばす（＝小さく見える／不自然に切れる）
-   のではなく、画像本来の縦長比率を保ったまま「大きな一枚のカード」として中央に表示する。
-   #splash-screen 自体は、その周囲を落ち着いた背景で満たす役に回る。 */
-@media (min-aspect-ratio: 3/4){
-  #splash-screen{
-    background-image:radial-gradient(ellipse 70% 60% at 50% 30%, rgba(74,25,66,0.35), transparent 65%), linear-gradient(180deg, #1f1730 0%, #120d1a 100%);
-    padding:4vh 24px;
-    justify-content:center;
-  }
-  .splash-frame{
-    width:auto; height:100%; max-height:94vh; aspect-ratio:768/1664; max-width:92vw;
-    border-radius:22px; overflow:hidden; box-shadow:0 30px 90px rgba(0,0,0,0.6), 0 0 0 1px rgba(212,175,55,0.25);
-    background-color:#1a1428;
-    background-image:
-      linear-gradient(180deg, rgba(10,7,16,0.05) 0%, rgba(10,7,16,0.05) 55%, rgba(10,7,16,0.55) 82%, rgba(6,4,10,0.78) 100%),
-      url('./splash-bg.jpg');
-    background-size:cover; background-position:center top; background-repeat:no-repeat;
-    padding:0 24px;
-    justify-content:flex-end;
-  }
-}
-
-/* 四隅の金の装飾枠（静的、アニメーションなし＝コストほぼゼロ） */
-/* 背景画像に既に豪華な額縁・カーテン装飾があるため、自前の角飾りは重複を避けて非表示にする */
-.splash-corner{ display:none; }
-.splash-corner::before{ content:''; position:absolute; inset:0; border-color:#d9ad3f; }
-.splash-corner::after{ content:''; position:absolute; width:6px; height:6px; background:#d9ad3f; transform:rotate(45deg); }
-.splash-corner.tl{ top:18px; left:18px; }
-.splash-corner.tl::before{ border-top:1.5px solid; border-left:1.5px solid; border-radius:14px 0 0 0; }
-.splash-corner.tl::after{ top:-3px; left:-3px; }
-.splash-corner.tr{ top:18px; right:18px; }
-.splash-corner.tr::before{ border-top:1.5px solid; border-right:1.5px solid; border-radius:0 14px 0 0; }
-.splash-corner.tr::after{ top:-3px; right:-3px; }
-.splash-corner.bl{ bottom:18px; left:18px; }
-.splash-corner.bl::before{ border-bottom:1.5px solid; border-left:1.5px solid; border-radius:0 0 0 14px; }
-.splash-corner.bl::after{ bottom:-3px; left:-3px; }
-.splash-corner.br{ bottom:18px; right:18px; }
-.splash-corner.br::before{ border-bottom:1.5px solid; border-right:1.5px solid; border-radius:0 0 14px 0; }
-.splash-corner.br::after{ bottom:-3px; right:-3px; }
-
-/* 浮遊する光の粒（JSで5〜6個生成。opacity+transformのみでGPU負荷を抑える） */
-.splash-particles{ position:absolute; inset:0; pointer-events:none; overflow:hidden; }
-.splash-particle{ position:absolute; border-radius:50%; background:#f5dd8f; box-shadow:0 0 6px rgba(240,215,137,0.8); animation:splashFloat linear infinite; }
-@keyframes splashFloat{
-  0%{ opacity:0; transform:translateY(0) scale(.6); }
-  10%{ opacity:.9; }
-  90%{ opacity:.5; }
-  100%{ opacity:0; transform:translateY(-70vh) scale(1.1); }
-}
-
-.splash-logo-wrap{ position:relative; display:flex; align-items:center; justify-content:center; z-index:1; }
-/* 周回する光点は、背景画像に既に装飾があるため今回は非表示にする */
-.splash-orbit{ display:none; }
-
-/* タイトル・副題は背景画像に既に描き込まれているため、視覚的には表示しない
-   （スクリーンリーダー向けの内容として、見た目に影響しない形でDOMには残す） */
-.splash-title, .splash-subtitle{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-
-.splash-divider{ display:none; }
-
-/* ここから下：背景画像の下部（招待状・ボタンの余白部分）に重なる形で配置する
-   読み込み状況の表示と「はじめる」ボタン。背景画像2枚目でのボタン位置を参考にしている。 */
-.splash-bottom-area{
-  position:relative; z-index:1; width:100%; max-width:360px;
-  display:flex; flex-direction:column; align-items:center;
-  padding-bottom:max(34px, env(safe-area-inset-bottom, 0px) + 20px);
-}
-/* 読み込み中の表示（進捗バー・状態文言）と、読み込み後の「はじめる」ボタンを、
-   同じ場所に重ねて表示するための土台。片方が消えると同時にもう片方が現れる。 */
-.splash-action-slot{ position:relative; width:100%; max-width:300px; min-height:96px; }
-.splash-loading-state{
-  position:absolute; inset:0; width:100%;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
-  transition:opacity .5s ease, transform .5s ease; opacity:1;
-}
-.splash-loading-state.done{ opacity:0; transform:translateY(-6px); pointer-events:none; }
-.splash-button-state{
-  position:absolute; inset:0; width:100%;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
-}
-.splash-progress{
-  width:min(58vw, 190px); height:4px; border-radius:999px; overflow:hidden;
-  background:rgba(255,255,255,0.15); border:1px solid rgba(240,215,137,0.35);
-}
-.splash-progress-fill{
-  height:100%; width:0%; border-radius:999px;
-  background:linear-gradient(90deg, #ab9048, #f5dd8f);
-  box-shadow:0 0 10px rgba(240,215,137,0.6);
-  transition:width 1.6s cubic-bezier(.3,.7,.35,1);
-}
-.splash-sub{
-  font-size:11.5px; letter-spacing:.14em; color:#e8dfc8; font-family:'Shippori Mincho','Hiragino Mincho ProN','Yu Mincho',serif;
-  min-height:1.4em; text-shadow:0 1px 6px rgba(0,0,0,0.8);
-}
-/* 「はじめる」ボタン：背景画像2枚目の招待状風ボタンに寄せた、金の二重縁取り＋濃い背景のデザイン */
-/* 「はじめる」ボタンの上にある、フルール・ド・リス付きの飾り罫線（参考画像を再現） */
-.splash-btn-flourish{
-  position:relative; z-index:1; width:100%; max-width:300px;
-  display:flex; align-items:center; justify-content:center; gap:10px;
-  opacity:0; transform:translateY(8px); transition:opacity .5s ease .1s, transform .5s ease .1s;
-}
-.splash-btn-flourish.show{ opacity:1; transform:translateY(0); }
-.splash-btn-flourish .fl-line{ flex:1; height:1px; background:linear-gradient(90deg, transparent, #c9a227); }
-.splash-btn-flourish .fl-line.r{ background:linear-gradient(90deg, #c9a227, transparent); }
-.splash-btn-flourish .fl-mark{ font-size:13px; color:#d9ad3f; text-shadow:0 0 8px rgba(217,173,63,0.7); }
-
-.splash-start-btn{
-  position:relative; z-index:1;
-  font-family:'Shippori Mincho','Hiragino Mincho ProN','Yu Mincho',serif; font-size:18px; letter-spacing:.4em;
-  padding:16px 20px; width:100%; max-width:300px; border-radius:999px; cursor:pointer;
-  background:linear-gradient(180deg, #1c1520 0%, #0e0a12 100%);
-  color:#f0d789;
-  border:2px solid #c9a227;
-  box-shadow:
-    0 0 0 1px rgba(0,0,0,0.7),
-    0 0 0 5px rgba(201,162,39,0.14),
-    inset 0 0 0 1px rgba(240,215,137,0.35),
-    inset 0 0 22px rgba(201,162,39,0.18),
-    0 10px 28px rgba(0,0,0,0.55);
-  opacity:0; transform:translateY(8px); pointer-events:none;
-  transition:opacity .5s ease, transform .5s ease;
-}
-.splash-start-btn::before, .splash-start-btn::after{
-  content:'⚜'; font-size:12px; vertical-align:middle; color:#d9ad3f; margin:0 12px; opacity:.9;
-  text-shadow:0 0 6px rgba(217,173,63,0.8);
-}
-.splash-start-btn.show{ opacity:1; transform:translateY(0); pointer-events:auto; }
-@media (prefers-reduced-motion: reduce){
-  #splash-screen{ animation:none; }
-  .splash-particle{ display:none; }
-  .splash-start-btn, .splash-btn-flourish{ transition:opacity .2s ease; }
-}
-
-#app{position:relative; z-index:1; max-width:760px; margin:0 auto; padding:0 14px 40px; display:flex; flex-direction:column; min-height:100dvh;}
-body.table-mode #app{ height:100dvh; padding-bottom:6px; overflow:hidden; }
-
-/* ---------- header ---------- */
-header.top{
-  text-align:center; padding:calc(16px + env(safe-area-inset-top, 0px)) 10px 10px; position:relative; flex:0 0 auto;
-  transition:padding .25s ease;
-}
-.sfx-toggle{
-  position:absolute; top:calc(12px + env(safe-area-inset-top, 0px)); right:12px; z-index:2;
-  background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.3); color:var(--ivory);
-  width:34px; height:34px; border-radius:50%; font-size:15px; cursor:pointer;
-  display:flex; align-items:center; justify-content:center; transition:background .15s ease, opacity .2s ease;
-}
-.sfx-toggle:hover{ background:rgba(212,175,55,0.18); }
-.sfx-toggle.muted{ opacity:.55; }
-header.top.compact .sfx-toggle{ top:calc(6px + env(safe-area-inset-top, 0px)); right:8px; width:26px; height:26px; font-size:12px; }
-.bgm-toggle{
-  position:absolute; top:calc(12px + env(safe-area-inset-top, 0px)); right:52px; z-index:2;
-  background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.3); color:var(--ivory);
-  width:34px; height:34px; border-radius:50%; font-size:15px; cursor:pointer;
-  display:flex; align-items:center; justify-content:center; transition:background .15s ease, opacity .2s ease;
-}
-.bgm-toggle:hover{ background:rgba(212,175,55,0.18); }
-.bgm-toggle.muted{ opacity:.55; }
-header.top.compact .bgm-toggle{ top:calc(6px + env(safe-area-inset-top, 0px)); right:38px; width:26px; height:26px; font-size:12px; }
-header.top .eyebrow{
-  letter-spacing:.35em; font-size:10px; color:var(--gold); text-transform:uppercase; opacity:0;
-  animation:fadeUp .7s ease .05s forwards;
-}
-header.top h1{
-  font-family:'Cormorant Garamond', serif; font-weight:600; font-style:italic;
-  font-size:clamp(24px,6.2vw,38px); margin:2px 0 1px; letter-spacing:.03em; white-space:nowrap;
-  color:#f0d789;
-  text-shadow:0 0 22px rgba(240,215,137,0.5), 0 0 4px rgba(240,215,137,0.4);
-  opacity:0; animation:fadeUp .8s ease .18s forwards;
-  transition:font-size .25s ease;
-}
-header.top .subtitle{ font-family:'Shippori Mincho',serif; font-size:clamp(11px,3.4vw,12.5px); letter-spacing:.14em; color:var(--ivory-dim);
-  white-space:nowrap; opacity:0; animation:fadeUp .8s ease .32s forwards;
-}
-header.top .divider{
-  width:110px; height:1px; margin:8px auto 0; position:relative; overflow:hidden;
-  background:linear-gradient(90deg, transparent, var(--gold), transparent); opacity:0;
-  animation:fadeUp .8s ease .46s forwards, shimmerLine 3.4s ease-in-out 1.3s infinite;
-}
-@keyframes fadeUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
-@keyframes shimmerLine{ 0%,100%{filter:brightness(1);} 50%{filter:brightness(1.9);} }
-@media (prefers-reduced-motion: reduce){
-  header.top .eyebrow, header.top h1, header.top .subtitle, header.top .divider{ animation:none; opacity:1; }
-}
-
-/* 舞踏会画面表示中は「MASQUERADE」のみのコンパクトな見出しにする */
-header.top.compact{ padding:calc(8px + env(safe-area-inset-top, 0px)) 10px 4px; }
-header.top.compact .eyebrow,
-header.top.compact .subtitle,
-header.top.compact .divider{ display:none; }
-header.top.compact h1{ font-size:20px; margin:0; opacity:1; animation:none; }
-
-/* ---------- start screen ---------- */
-#start-screen{ padding:6px 6px 10px; flex:1 1 auto; overflow-y:auto; display:flex; flex-direction:column; justify-content:flex-start; }
-.lede{ font-size:13px; line-height:1.65; color:var(--ivory-dim); text-align:center; max-width:420px; margin:6px auto 12px; word-break:normal; overflow-wrap:break-word; text-wrap:pretty; }
-.lede b{ color:var(--gold-light); font-weight:700; }
-
-.rules-toggle-wrap{ text-align:center; margin-bottom:8px; }
-.tutorial-link-wrap{ text-align:center; margin-top:10px; }
-.link-btn{
-  background:none; border:none; color:var(--gold); font-family:'Zen Maru Gothic',sans-serif;
-  font-size:13px; letter-spacing:.06em; cursor:pointer; border-bottom:1px dotted var(--gold-dim); padding:2px 4px;
-}
-.link-btn:hover{ color:var(--gold-light); }
-
-#rules-panel{ display:none; margin:0 auto 26px; max-width:600px; background:rgba(212,175,55,0.045); border:1px solid rgba(212,175,55,0.25); border-radius:14px; padding:18px 18px 6px; }
-#rules-panel.open{ display:block; }
-#rules-panel h3{ font-family:'Shippori Mincho',serif; color:var(--gold-light); font-size:15px; margin:0 0 10px; letter-spacing:.05em;}
-.rule-card-row{ display:flex; gap:12px; align-items:flex-start; padding:10px 0; border-top:1px dashed rgba(212,175,55,0.18);}
-.rule-card-row:first-of-type{ border-top:none; }
-.rule-thumb{ flex:0 0 44px; width:44px; aspect-ratio:300/505; border-radius:6px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.5); }
-.rule-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
-.rule-text{ flex:1; }
-.rule-text .rn{ font-family:'Shippori Mincho',serif; font-size:13.5px; color:var(--ivory); }
-.rule-text .ry{ font-size:10px; color:var(--ivory-dim); margin-left:2px;}
-.rule-text .rability{ font-size:10.5px; color:var(--gold-light); margin-left:6px; font-weight:600; letter-spacing:.03em; }
-.rule-text .rd{ font-size:12px; color:var(--ivory-dim); margin-top:2px; line-height:1.6; }
-.rule-count{ flex:0 0 auto; font-size:11px; color:var(--gold-light); font-family:'Cormorant Garamond',serif; padding-top:6px;}
-
-.start-actions{ text-align:center; margin-top:10px; }
-
-.start-deco{
-  display:flex; justify-content:center; align-items:flex-end; margin:26px auto 4px;
-  min-height:110px; position:relative; pointer-events:none; flex:1 1 auto;
-}
-.deco-card{ position:relative; }
-.deco-card.a{ transform:rotate(-10deg) translateX(16px); z-index:1; }
-.deco-card.b{ transform:rotate(9deg) translateX(-16px); z-index:2; margin-bottom:14px; }
-.deco-card img{
-  display:block; width:96px; aspect-ratio:300/505; object-fit:cover; border-radius:9px;
-  box-shadow:0 10px 26px rgba(0,0,0,0.5), 0 0 0 2px rgba(240,215,137,0.75), 0 0 22px rgba(240,215,137,0.32);
-  opacity:0;
-  animation:decoFadeIn .7s cubic-bezier(.2,1,.35,1) forwards, cardBreathe 3.2s ease-in-out 1.1s infinite;
-}
-.deco-card.a img{ animation-delay:.15s, 1.1s; }
-.deco-card.b img{ animation-delay:.35s, 1.1s; }
-@keyframes decoFadeIn{ from{ opacity:0; transform:translateY(16px) scale(.92); } to{ opacity:1; transform:translateY(0) scale(1); } }
-@media (prefers-reduced-motion: reduce){ .deco-card img{ animation:none; opacity:1; } }
-.btn-grand{
-  font-family:'Shippori Mincho',serif; font-size:16px; letter-spacing:.14em;
-  background:linear-gradient(180deg, var(--gold-light), var(--gold) 70%);
-  color:var(--ink); border:none; padding:13px 40px; border-radius:999px; cursor:pointer;
-  box-shadow:0 6px 22px rgba(212,175,55,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
-  transition:transform .15s ease, box-shadow .15s ease;
-  position:relative; overflow:hidden; animation:grandGlow 2.6s ease-in-out infinite;
-}
-.btn-grand::after{
-  content:''; position:absolute; top:0; left:-60%; width:35%; height:100%;
-  background:linear-gradient(120deg, transparent, rgba(255,255,255,0.65), transparent);
-  transform:skewX(-20deg); transition:left .6s ease;
-}
-.btn-grand:hover::after{ left:130%; }
-.btn-grand:hover{ transform:translateY(-1px); box-shadow:0 9px 26px rgba(212,175,55,0.45); }
-.btn-grand:active{ transform:translateY(0px) scale(.98); }
-@keyframes grandGlow{ 0%,100%{ box-shadow:0 6px 22px rgba(212,175,55,0.35), inset 0 1px 0 rgba(255,255,255,0.5); } 50%{ box-shadow:0 6px 30px rgba(212,175,55,0.6), inset 0 1px 0 rgba(255,255,255,0.6); } }
-@media (prefers-reduced-motion: reduce){ .btn-grand{ animation:none; } .btn-grand::after{ display:none; } }
-
-.difficulty-wrap{ text-align:center; margin:12px 0 8px; }
-.mini-flourish{ display:flex; align-items:center; justify-content:center; gap:8px; margin:2px 0; opacity:.6; }
-.mini-flourish::before, .mini-flourish::after{ content:''; width:38px; height:1px; background:linear-gradient(90deg, transparent, var(--gold)); }
-.mini-flourish::after{ background:linear-gradient(90deg, var(--gold), transparent); }
-.mini-flourish span{ width:5px; height:5px; background:var(--gold-light); transform:rotate(45deg); flex:0 0 auto; }
-.difficulty-label{ font-size:10.5px; letter-spacing:.16em; color:var(--gold-light); margin-bottom:8px; font-family:'Shippori Mincho',serif; }
-.difficulty-row{ display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
-.diff-btn{
-  font-family:'Zen Maru Gothic',sans-serif; font-size:12.5px; letter-spacing:.03em;
-  background:rgba(212,175,55,0.07); color:var(--ivory-dim); border:1px solid rgba(212,175,55,0.3);
-  padding:8px 16px; border-radius:999px; cursor:pointer; transition:all .18s ease;
-}
-.diff-btn:hover{ background:rgba(212,175,55,0.14); color:var(--ivory); }
-.diff-btn.active{
-  background:linear-gradient(180deg, var(--gold-light), var(--gold) 75%); color:var(--ink); font-weight:700; border-color:transparent;
-  box-shadow:0 4px 14px rgba(212,175,55,0.35);
-}
-.difficulty-epithet{ font-size:11px; color:var(--ivory-dim); margin-top:6px; min-height:1.3em; font-style:italic; }
-.stats-panel{
-  display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap;
-  margin-top:8px; padding:6px 12px; border-radius:999px;
-  background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.2);
-  font-size:10.5px; color:var(--ivory-dim); min-height:1.5em;
-}
-.stats-panel .stats-empty{ opacity:.7; }
-.stats-panel .stats-record{ color:var(--ivory); }
-.stats-panel .stats-streak{ color:var(--gold-light); font-weight:600; }
-.stats-panel .stats-streak.off{ color:var(--ivory-dim); font-weight:400; opacity:.7; }
-.stats-panel .stats-best{ color:var(--gold-light); }
-.stats-reset-btn{
-  background:none; border:none; padding:0; margin-left:2px;
-  font-family:'Zen Maru Gothic',sans-serif; font-size:10px; color:var(--ivory-dim);
-  text-decoration:underline; text-underline-offset:2px; cursor:pointer; opacity:.75;
-}
-.stats-reset-btn:hover{ color:var(--danger); opacity:1; }
-
-/* ---------- オンライン対戦パネル ---------- */
-.online-panel{ display:flex; flex-direction:column; gap:12px; align-items:center; padding-top:4px; }
-.online-choice-row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; width:100%; }
-.online-join-row{ display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap; }
-.online-code-input{
-  font-family:'Cormorant Garamond',serif; font-size:19px; letter-spacing:.2em; text-align:center;
-  text-transform:uppercase; width:130px; padding:9px 10px; border-radius:10px;
-  border:1px solid rgba(212,175,55,0.4); background:rgba(212,175,55,0.05); color:var(--ivory);
-}
-.online-code-input::placeholder{ color:var(--ivory-dim); letter-spacing:.1em; }
-.online-code-display{
-  font-family:'Cormorant Garamond',serif; font-size:32px; letter-spacing:.28em; font-weight:600;
-  color:var(--gold-light); text-align:center; padding:6px 0;
-}
-.online-status-text{ font-size:12.5px; color:var(--ivory-dim); text-align:center; line-height:1.7; }
-.online-waiting-dot{ display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--gold); margin:0 2px; animation:onlinePulse 1.4s ease-in-out infinite; }
-.online-waiting-dot:nth-child(2){ animation-delay:.2s; }
-.online-waiting-dot:nth-child(3){ animation-delay:.4s; }
-@keyframes onlinePulse{ 0%,100%{ opacity:.3; } 50%{ opacity:1; } }
-.online-error{ color:var(--danger); font-size:12px; text-align:center; }
-
-/* =======================================================================
-   カード効果ごとの演出オーバーレイ（effect-stage）
-   ・画面全体に一瞬だけ現れる、カードの種類ごとに異なる合図・演出。
-   ・クリック等の操作を一切妨げないよう pointer-events:none を貫通させている。
-   ・結果を伝えるモーダル（文字表示）はこれまで通りそのまま表示される。演出はその「前振り」。
-   ======================================================================= */
-.effect-stage{
-  position:fixed; inset:0; z-index:60; pointer-events:none;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
-  opacity:0; visibility:hidden; transition:opacity .25s ease;
-}
-.effect-stage.open{ opacity:1; visibility:visible; }
-/* 演出の背後に、ごく控えめな「スポットライト」状の暗い背景を敷くことで、
-   ちょうど同じ位置に表示されている「場」の文言などと視覚的に重なって
-   読みづらくなるのを防ぐ（下の文字を隠すのではなく、後退させて演出を目立たせる）。 */
-.effect-stage::before{
-  content:''; position:absolute; inset:0;
-  background:radial-gradient(ellipse 62% 46% at 50% 50%, rgba(5,4,10,0.62) 0%, rgba(5,4,10,0.32) 55%, transparent 78%);
-  opacity:0; transition:opacity .3s ease;
-}
-.effect-stage.open::before{ opacity:1; }
-@media (prefers-reduced-motion: reduce){ .effect-stage::before{ transition:none; } }
-.effect-stage-ring{
-  position:absolute; width:60px; height:60px; border-radius:50%;
-  border:2px solid var(--stage-color, var(--gold));
-  box-shadow:0 0 0 0 var(--stage-color, var(--gold));
-  opacity:0;
-}
-.effect-stage.open .effect-stage-ring{ animation:stageRingBurst 1.4s cubic-bezier(.2,.8,.3,1) both; }
-@keyframes stageRingBurst{
-  0%{ opacity:.9; transform:scale(.3); }
-  70%{ opacity:.35; }
-  100%{ opacity:0; transform:scale(9); }
-}
-.effect-stage-particles{ position:absolute; inset:0; overflow:hidden; }
-.effect-stage-particle{
-  position:absolute; width:4px; height:4px; border-radius:50%;
-  background:var(--stage-color, var(--gold)); box-shadow:0 0 6px var(--stage-color, var(--gold));
-  opacity:0;
-}
-.effect-stage.open .effect-stage-particle{ animation:stageParticleFly 1.3s ease-out both; }
-@keyframes stageParticleFly{
-  0%{ opacity:1; transform:translate(0,0) scale(1); }
-  100%{ opacity:0; transform:translate(var(--px,60px),var(--py,-60px)) scale(.3); }
-}
-.effect-stage-icon{
-  position:relative; font-size:64px; line-height:1; filter:drop-shadow(0 0 18px var(--stage-color, var(--gold)));
-  opacity:0; transform:scale(.4);
-}
-.effect-stage.open .effect-stage-icon{ animation:stageIconPop 1.4s cubic-bezier(.2,1.4,.4,1) both; }
-@keyframes stageIconPop{
-  0%{ opacity:0; transform:scale(.3) rotate(-12deg); }
-  55%{ opacity:1; transform:scale(1.15) rotate(4deg); }
-  100%{ opacity:0; transform:scale(1) rotate(0deg); }
-}
-.effect-stage-label{
-  position:relative; font-family:'Shippori Mincho',serif; font-size:20px; letter-spacing:.3em;
-  color:var(--stage-color, var(--gold-light)); text-shadow:0 0 16px var(--stage-color, var(--gold));
-  opacity:0; transform:translateY(8px);
-}
-.effect-stage.open .effect-stage-label{ animation:stageLabelRise 1.4s cubic-bezier(.2,1,.4,1) .05s both; }
-@keyframes stageLabelRise{
-  0%{ opacity:0; transform:translateY(14px); }
-  40%{ opacity:1; transform:translateY(0); }
-  80%{ opacity:1; }
-  100%{ opacity:0; transform:translateY(-6px); }
-}
-@media (prefers-reduced-motion: reduce){
-  .effect-stage{ transition:none; }
-  .effect-stage .effect-stage-ring, .effect-stage .effect-stage-particle{ animation:none !important; opacity:0 !important; }
-}
-/* 「アニメーションを減らす」設定の端末でも、演出そのものが完全に見えなくなるのは避けたい。
-   最も派手な光の粒（放射状のパーティクル）だけは省略しつつ、
-   アイコン・呼び名・カードごとの専用モーションはPC版と同じように表示する（JS側のplayEffectStageで制御）。 */
-.effect-stage.reduced-motion .effect-stage-particle{ display:none; }
-
-/* ---- カードごとの個性を出すための追加モーション（アイコンに重ねて適用） ---- */
-/* 給仕「看破」：スキャンするような左右の走査線 */
-.effect-stage.fx-guessRank .effect-stage-icon{ animation-name:stageIconPop, fxScan; animation-duration:1.4s,1.4s; }
-@keyframes fxScan{ 0%,100%{ filter:drop-shadow(0 0 18px var(--stage-color)) brightness(1);} 50%{ filter:drop-shadow(0 0 30px var(--stage-color)) brightness(1.6);} }
-
-/* 楽団員「探知」：波紋が連続で広がるレーダー */
-.effect-stage.fx-peekRange .effect-stage-ring{ animation-name:stageRingBurst, fxRadarPulse; }
-@keyframes fxRadarPulse{ 0%,100%{ border-width:2px; } 50%{ border-width:4px; } }
-
-/* 預言者「暴露」：仮面が左右に割れて剥がれる */
-.effect-stage.fx-revealHand .effect-stage-icon{ animation:fxCrack 1.4s cubic-bezier(.3,.9,.3,1) both; }
-@keyframes fxCrack{
-  0%{ opacity:0; transform:scale(.5) rotate(0deg); }
-  40%{ opacity:1; transform:scale(1.2) rotate(0deg); }
-  60%{ transform:scale(1.1) rotate(-6deg); }
-  75%{ transform:scale(1.15) rotate(6deg); }
-  100%{ opacity:0; transform:scale(1.3) rotate(0deg); }
-}
-
-/* 貴婦人「加護」：金の盾がふわりと開く */
-.effect-stage.fx-protectSelf .effect-stage-icon{ animation:fxShieldBloom 1.6s cubic-bezier(.2,1.3,.3,1) both; }
-@keyframes fxShieldBloom{
-  0%{ opacity:0; transform:scale(.2); }
-  50%{ opacity:1; transform:scale(1.25); }
-  100%{ opacity:0; transform:scale(1.05); }
-}
-.effect-stage.fx-protectSelf .effect-stage-ring{ animation-name:stageRingBurst, fxShieldRing; }
-@keyframes fxShieldRing{ 0%{ border-style:double; border-width:6px; } 100%{ border-style:solid; } }
-
-/* 密偵「隠密」：静かに、影のようにすっと現れて消える */
-.effect-stage.fx-peekDeckTop .effect-stage-icon{ animation:fxShadowPeek 1.75s ease both; }
-@keyframes fxShadowPeek{
-  0%{ opacity:0; transform:translateX(-14px) scale(.7); }
-  30%{ opacity:.9; transform:translateX(0) scale(1); }
-  70%{ opacity:.9; }
-  100%{ opacity:0; transform:translateX(14px) scale(.85); }
-}
-
-/* 道化師「悪戯」：2枚が入れ替わるようにくるりと回転 */
-.effect-stage.fx-doubleRedraw .effect-stage-icon{ animation:fxJesterSwap 1.6s cubic-bezier(.3,.9,.3,1.1) both; }
-@keyframes fxJesterSwap{
-  0%{ opacity:0; transform:scale(.5) rotate(0deg); }
-  30%{ opacity:1; }
-  100%{ opacity:0; transform:scale(1) rotate(340deg); }
-}
-
-/* 毒見役「毒杯」：とろりと沈んでいくような、ゆっくりした落下＋滲み */
-.effect-stage.fx-secretRedraw .effect-stage-icon{ animation:fxPoisonSink 1.75s ease-in both; }
-@keyframes fxPoisonSink{
-  0%{ opacity:0; transform:translateY(-10px) scale(.6); }
-  35%{ opacity:1; transform:translateY(0) scale(1.1); }
-  100%{ opacity:0; transform:translateY(16px) scale(.9); filter:blur(2px) drop-shadow(0 0 18px var(--stage-color)); }
-}
-
-/* 黒騎士「決闘」：ぶつかり合うような激しい振動と閃光 */
-.effect-stage.fx-compareHand .effect-stage-icon{ animation:fxClash 1.2s cubic-bezier(.2,1,.4,1) both; }
-@keyframes fxClash{
-  0%{ opacity:0; transform:scale(.6); }
-  35%{ opacity:1; transform:scale(1.3); }
-  45%{ transform:scale(1.1) translateX(-8px); }
-  55%{ transform:scale(1.1) translateX(8px); }
-  65%{ transform:scale(1.1) translateX(-4px); }
-  100%{ opacity:0; transform:scale(1) translateX(0); }
-}
-
-/* 大公「封印」：スタンプを押すように、上からドンと降りてくる */
-.effect-stage.fx-sealTurn .effect-stage-icon{ animation:fxSealStamp 1.2s cubic-bezier(.5,0,.3,1.3) both; }
-@keyframes fxSealStamp{
-  0%{ opacity:0; transform:translateY(-70px) scale(1.4) rotate(-8deg); }
-  55%{ opacity:1; transform:translateY(0) scale(1) rotate(0deg); }
-  100%{ opacity:0; transform:translateY(0) scale(.96) rotate(0deg); }
-}
-
-/* 仮面の主催者「共倒れ」：中心から弾けるように大きく広がる、最も派手な演出 */
-.effect-stage.fx-mutualDestroy .effect-stage-icon{ animation:fxShatter 1.9s cubic-bezier(.2,1,.3,1) both; font-size:80px; }
-@keyframes fxShatter{
-  0%{ opacity:0; transform:scale(.2) rotate(0deg); }
-  35%{ opacity:1; transform:scale(1.5) rotate(8deg); }
-  50%{ transform:scale(1.3) rotate(-6deg); }
-  100%{ opacity:0; transform:scale(2.1) rotate(0deg); }
-}
-.effect-stage.fx-mutualDestroy .effect-stage-ring{ animation-name:stageRingBurst, fxShatterRing; animation-duration:1.9s,1.9s; }
-@keyframes fxShatterRing{ 0%{ border-width:5px; } 100%{ border-width:1px; } }
-
-.stale-banner{
-  display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
-  background:rgba(193,73,95,0.16); border:1px solid rgba(193,73,95,0.4); border-radius:10px;
-  padding:8px 12px; margin:4px 0 8px; font-size:12px; color:var(--ivory);
-  animation:staleBannerPulse 2.4s ease-in-out infinite;
-}
-@keyframes staleBannerPulse{ 0%,100%{ opacity:.85; } 50%{ opacity:1; } }
-@media (prefers-reduced-motion: reduce){ .stale-banner{ animation:none; } }
-.online-name-row{
-  display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px;
-  font-size:12px; color:var(--ivory-dim);
-}
-.online-name-row b{ color:var(--gold-light); }
-.leaderboard-list{ display:flex; flex-direction:column; gap:6px; max-height:55vh; overflow-y:auto; margin:12px 0; }
-.leaderboard-row{
-  display:grid; grid-template-columns:38px 1fr auto; grid-template-areas:"rank name points" "rank record streak";
-  gap:2px 8px; padding:8px 10px; border-radius:10px; background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.18);
-  font-size:11.5px; text-align:left; align-items:center;
-}
-.leaderboard-row.mine{ background:rgba(212,175,55,0.16); border-color:rgba(212,175,55,0.45); }
-.leaderboard-row .lb-rank{ grid-area:rank; font-family:'Cormorant Garamond',serif; font-size:14px; color:var(--gold-dim); font-weight:600; }
-.leaderboard-row .lb-name{ grid-area:name; color:var(--ivory); font-weight:600; }
-.leaderboard-row .lb-points{ grid-area:points; color:var(--gold-light); font-weight:700; }
-.leaderboard-row .lb-record{ grid-area:record; color:var(--ivory-dim); }
-.leaderboard-row .lb-streak{ grid-area:streak; color:var(--ivory-dim); text-align:right; }
-@media (prefers-reduced-motion: reduce){ .online-waiting-dot{ animation:none; opacity:.7; } }
-
-/* ---------- table ---------- */
-#table{ display:none; }
-#table.open{
-  display:flex; flex-direction:column; flex:1 1 auto; min-height:0;
-  overflow-y:auto; -webkit-overflow-scrolling:touch; gap:8px; padding-bottom:6px;
-}
-
-.icon-btn{
-  background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.4); color:var(--ivory);
-  border-radius:9px; padding:6px 10px; font-size:13px; cursor:pointer; line-height:1;
-  transition:background .15s ease;
-}
-.icon-btn:hover{ background:rgba(212,175,55,0.18); }
-
-.status-strip{
-  display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--ivory-dim);
-  padding:2px 2px 4px; letter-spacing:.03em; flex:0 0 auto; gap:8px;
-}
-.status-strip .turn-badge{
-  color:var(--gold-light); font-family:'Shippori Mincho',serif; letter-spacing:.06em;
-  font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.status-strip .status-right{ display:flex; align-items:center; gap:10px; }
-
-.deck-count-mini{
-  display:flex; align-items:center; gap:4px; flex:0 0 auto; white-space:nowrap;
-  font-family:'Shippori Mincho',serif; font-size:12px; color:var(--gold-light);
-}
-.deck-count-mini .deck-mini-icon{ font-size:13px; opacity:.85; }
-
-.zone{
-  background:rgba(212,175,55,0.035); border:1px solid rgba(212,175,55,0.18);
-  border-radius:14px; padding:10px 14px; position:relative; flex:0.44 1 auto;
-}
-.zone::before, .zone::after{
-  content:''; position:absolute; width:13px; height:13px; pointer-events:none; opacity:.5; border-color:var(--gold-dim);
-}
-.zone::before{ top:5px; left:5px; border-top:1px solid; border-left:1px solid; border-radius:3px 0 0 0; }
-.zone::after{ bottom:5px; right:5px; border-bottom:1px solid; border-right:1px solid; border-radius:0 0 3px 0; }
-.zone-label{
-  position:absolute; top:-9px; left:14px; background:var(--bg-deep); padding:0 8px;
-  font-size:10px; letter-spacing:.16em; color:var(--gold); font-family:'Shippori Mincho',serif;
-}
-#action-zone-wrap{ flex:0.4 1 auto; min-height:0; display:flex; flex-direction:column; padding:8px 14px; overflow:visible; }
-/* 対戦相手（CPU）の手札枠は、自分側より少し控えめな高さにして、中央の「場」がしっかり見えるようにする */
-#opponent-zone{ flex:0.34 1 auto; }
-#action-zone-wrap #action-panel{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:center; overflow-y:auto; }
-.player-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
-.player-name{ display:flex; align-items:center; gap:8px; font-family:'Shippori Mincho',serif; font-size:13px; }
-.protect-icon{ font-size:13px; color:var(--gold-light); display:none; }
-.protect-icon.show{ display:inline-block; animation:shieldPulse 1.8s ease-in-out infinite; }
-@keyframes shieldPulse{ 0%,100%{ text-shadow:0 0 4px rgba(240,215,137,0.35); } 50%{ text-shadow:0 0 14px rgba(240,215,137,0.95); } }
-.eliminated-tag{ font-size:11px; color:var(--danger); border:1px solid var(--danger); border-radius:999px; padding:1px 8px; display:none; }
-.eliminated-tag.show{ display:inline-block; animation:stampIn .45s cubic-bezier(.2,1.5,.4,1) both; }
-@keyframes stampIn{ 0%{ transform:scale(2.2) rotate(-10deg); opacity:0; } 60%{ transform:scale(.9) rotate(3deg); opacity:1; } 100%{ transform:scale(1) rotate(0deg); } }
-@media (prefers-reduced-motion: reduce){ .protect-icon.show{ animation:none; } .eliminated-tag.show{ animation:none; } }
-
-.zone.elim-flash{ animation:elimFlash .7s ease; }
-@keyframes elimFlash{
-  0%{ box-shadow:none; }
-  25%{ box-shadow:0 0 0 1px rgba(139,58,107,0.5), 0 0 42px rgba(139,58,107,0.5); transform:translateX(-5px); }
-  50%{ transform:translateX(5px); }
-  70%{ transform:translateX(-3px); }
-  100%{ box-shadow:none; transform:translateX(0); }
-}
-@media (prefers-reduced-motion: reduce){ .zone.elim-flash{ animation:none; } }
-
-.hand-area{ display:flex; gap:12px; margin-top:8px; align-items:center; justify-content:center; }
-.card{
-  width:156px; flex:0 0 auto; aspect-ratio:300/505; border-radius:10px; position:relative;
-  overflow:hidden;
-  /* すべてのカードで統一した縁デザイン（"王家の輝き"）。数字によって縁の色を変えると、
-     ちらっと見ただけで相手に手札の強さを悟られてしまうため、価値に関わらず全カード同じ縁にしている */
-  box-shadow:0 6px 18px rgba(0,0,0,0.55), 0 0 0 2px rgba(240,215,137,0.85), 0 0 26px rgba(240,215,137,0.45);
-  animation:dealIn .35s ease both;
-  cursor:default;
-  background:#241c38;
-}
-@keyframes dealIn{ from{opacity:0; transform:translateY(10px) scale(.94);} to{opacity:1; transform:none;} }
-.card img{ width:100%; height:100%; object-fit:cover; display:block; }
-
-.card.selectable{ cursor:pointer; transition:transform .18s ease, filter .18s ease; animation:dealIn .35s ease both, cardBreathe 2.6s ease-in-out .4s infinite; }
-.card.selectable:nth-child(1):hover{ transform:translateY(-8px) rotate(-2deg) scale(1.03); }
-.card.selectable:nth-child(2):hover{ transform:translateY(-8px) rotate(2deg) scale(1.03); }
-.card.selectable:hover{ filter:brightness(1.12); }
-.card.chosen{ outline:3px solid var(--gold-light); outline-offset:2px; }
-@keyframes cardBreathe{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.09); } }
-@media (prefers-reduced-motion: reduce){ .card.selectable{ animation:none; } .card{ animation:none; } }
-
-.card-back{
-  width:116px; flex:0 0 auto; aspect-ratio:300/505; border-radius:9px;
-  background:
-    radial-gradient(circle at 50% 42%, rgba(212,175,55,0.35) 0%, transparent 45%),
-    repeating-linear-gradient(45deg, #4a3966 0 6px, #382a52 6px 12px);
-  border:1.5px solid var(--gold-dim);
-  display:flex; align-items:center; justify-content:center;
-  box-shadow:0 3px 8px rgba(0,0,0,0.4);
-  animation:dealIn .35s ease both;
-}
-.card-back .mask-icon{ font-size:26px; opacity:.7; filter:drop-shadow(0 0 3px rgba(240,215,137,0.4)); }
-.card-back.thinking{ animation:dealIn .35s ease both, thinkPulse 1.3s ease-in-out infinite; }
-@keyframes thinkPulse{
-  0%,100%{ box-shadow:0 3px 8px rgba(0,0,0,0.4); border-color:var(--gold-dim); }
-  50%{ box-shadow:0 3px 22px rgba(212,175,55,0.55); border-color:var(--gold-light); }
-}
-@media (prefers-reduced-motion: reduce){ .card-back.thinking{ animation:none; } }
-
-.discard-strip{ display:flex; gap:6px; flex-wrap:wrap; min-height:30px; margin-top:6px; }
-.chip{
-  display:inline-flex; align-items:center; gap:5px;
-  font-size:10.5px; padding:3px 10px 3px 3px; border-radius:999px; background:rgba(212,175,55,0.08);
-  border:1px solid rgba(212,175,55,0.3); color:var(--ivory-dim); white-space:nowrap;
-  animation:chipIn .32s cubic-bezier(.2,1,.4,1) both;
-}
-.chip.empty{ padding:3px 10px; }
-.chip img{ width:16px; aspect-ratio:300/505; object-fit:cover; border-radius:3px; display:block; box-shadow:0 1px 3px rgba(0,0,0,0.5); }
-@keyframes chipIn{ from{ opacity:0; transform:translateY(6px) scale(.85); } to{ opacity:1; transform:none; } }
-.chip b{ color:var(--gold-light); font-weight:700; }
-.chip.host{ border-color:var(--danger); color:var(--velvet-light); }
-@media (prefers-reduced-motion: reduce){ .chip{ animation:none; } }
-
-.fab-discard{
-  position:fixed; right:16px; bottom:16px; z-index:45;
-  width:52px; height:52px; border-radius:50%; border:1px solid rgba(240,215,137,0.5);
-  background:linear-gradient(180deg, var(--gold-light), var(--gold) 75%);
-  color:var(--ink); font-size:22px; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  box-shadow:0 8px 22px rgba(0,0,0,0.5), 0 0 0 1px rgba(240,215,137,0.3);
-  transition:transform .15s ease, box-shadow .15s ease;
-}
-.fab-discard:hover{ transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,0.55), 0 0 0 1px rgba(240,215,137,0.4); }
-.fab-discard:active{ transform:translateY(0) scale(.96); }
-
-.discard-modal-section h5{
-  margin:16px 0 8px; font-size:12px; letter-spacing:.08em; color:var(--gold-light);
-  font-family:'Shippori Mincho',serif; text-align:left;
-}
-.discard-modal-section:first-of-type h5{ margin-top:4px; }
-
-.flying-card{
-  position:fixed; z-index:999; pointer-events:none; border-radius:10px; overflow:hidden;
-  box-shadow:0 10px 30px rgba(0,0,0,0.6), 0 0 0 rgba(212,175,55,0);
-  transition:transform .52s cubic-bezier(.22,.85,.3,1), opacity .52s ease .08s, box-shadow .52s ease;
-}
-.flying-card.flying{ box-shadow:0 10px 40px rgba(0,0,0,0.7), 0 0 34px rgba(212,175,55,0.55); }
-.flying-card img{ width:100%; height:100%; object-fit:cover; display:block; }
-@media (prefers-reduced-motion: reduce){ .flying-card{ transition:opacity .2s ease; } }
-
-/* カードを選ぶ瞬間の「押し込み」感（クリック直後にごく短く縮んでから戻る） */
-.card.select-pulse{ animation:cardSelectPulse .32s cubic-bezier(.3,1.6,.4,1) both; }
-@keyframes cardSelectPulse{
-  0%{ transform:scale(1); }
-  35%{ transform:scale(.92); }
-  100%{ transform:scale(1); }
-}
-
-/* 山札から新しく引いたばかりの1枚に付ける、少し大きめの登場演出 */
-.card.card-drawn{ animation:cardDrawIn .55s cubic-bezier(.2,.9,.25,1.15) both; }
-@keyframes cardDrawIn{
-  0%{ opacity:0; transform:translateY(-26px) rotate(-10deg) scale(.75); filter:brightness(1.5) drop-shadow(0 0 0 rgba(212,175,55,0)); }
-  60%{ opacity:1; transform:translateY(4px) rotate(3deg) scale(1.04); filter:brightness(1.25) drop-shadow(0 0 16px rgba(212,175,55,0.6)); }
-  100%{ opacity:1; transform:translateY(0) rotate(0deg) scale(1); filter:brightness(1) drop-shadow(0 0 0 rgba(212,175,55,0)); }
-}
-@media (prefers-reduced-motion: reduce){
-  .card.select-pulse, .card.card-drawn{ animation:none; }
-}
-
-/* ---------- action panel ---------- */
-#action-panel{
-  background:
-    radial-gradient(ellipse 70% 90% at 50% 40%, rgba(212,175,55,0.10), transparent 70%),
-    rgba(212,175,55,0.06);
-  border:1px solid rgba(212,175,55,0.3); border-radius:14px;
-  padding:10px 12px; margin-top:4px; text-align:center;
-  transition:opacity .3s ease;
-}
-/* カード効果の演出（effect-stage）が再生されている間だけ、「場」の文言を控えめにする。
-   両方とも画面中央付近に表示されるため、そのまま重ねると読みづらくなるための対策。
-   演出が終わればすぐ元の濃さに戻る。 */
-#action-panel.stage-dim{ opacity:.16; }
-@media (prefers-reduced-motion: reduce){ #action-panel{ transition:none; } }
-#action-panel .prompt{ font-family:'Shippori Mincho',serif; font-size:13.5px; color:var(--ivory); margin-bottom:10px; line-height:1.6; }
-#action-panel .sub-desc{ display:block; font-family:'Zen Maru Gothic',sans-serif; font-size:11.5px; color:var(--ivory-dim); margin-top:4px; line-height:1.6; }
-#action-panel .sub{ font-size:11.5px; color:var(--ivory-dim); margin-top:-6px; margin-bottom:12px; }
-.choice-row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
-.quick-chat-list{ display:flex; flex-direction:column; gap:8px; margin:14px 0; max-height:50vh; overflow-y:auto; }
-.quick-chat-btn{
-  font-family:'Zen Maru Gothic',sans-serif; font-size:13px; text-align:left;
-  background:rgba(212,175,55,0.07); border:1px solid rgba(212,175,55,0.3); color:var(--ivory);
-  padding:10px 14px; border-radius:10px; cursor:pointer; transition:background .15s ease;
-}
-.quick-chat-btn:hover{ background:rgba(212,175,55,0.16); }
-.btn{
-  font-family:'Zen Maru Gothic',sans-serif; font-size:13px; letter-spacing:.03em;
-  background:rgba(212,175,55,0.08); color:var(--ivory); border:1px solid rgba(212,175,55,0.4);
-  padding:9px 16px; border-radius:10px; cursor:pointer; transition:background .15s ease, transform .1s ease;
-  position:relative; overflow:hidden;
-}
-.btn:hover{ background:rgba(212,175,55,0.18); }
-.btn:active{ transform:scale(.97); }
-.btn.primary{ background:linear-gradient(180deg, var(--gold-light), var(--gold) 75%); color:var(--ink); font-weight:700; border:none; }
-.btn.primary:hover{ filter:brightness(1.05); }
-.btn.ghost{ background:transparent; }
-.btn:disabled{ opacity:.35; cursor:not-allowed; }
-
-.ripple{
-  position:absolute; border-radius:50%; background:rgba(255,255,255,0.55); pointer-events:none;
-  width:10px; height:10px; transform:translate(-50%,-50%) scale(0); animation:rippleExpand .6s ease-out forwards;
-}
-@keyframes rippleExpand{ from{ transform:translate(-50%,-50%) scale(0); opacity:.55; } to{ transform:translate(-50%,-50%) scale(22); opacity:0; } }
-@media (prefers-reduced-motion: reduce){ .ripple{ display:none; } }
-
-.num-pad{ display:grid; grid-template-columns:repeat(5,1fr); gap:9px; max-width:360px; margin:0 auto 12px; }
-.num-pad .btn{ padding:14px 0; font-family:'Cormorant Garamond',serif; font-size:23px; font-weight:700; }
-
-/* ---------- log ---------- */
-#log-toggle{ display:none; }
-#log-panel{
-  display:none; position:fixed; left:0; right:0; bottom:0; z-index:65;
-  max-height:55vh; overflow-y:auto; background:var(--bg-panel);
-  border-top:1px solid var(--gold-dim); border-radius:16px 16px 0 0;
-  padding:16px 18px 22px; font-size:12px; line-height:1.9; color:var(--ivory-dim);
-  box-shadow:0 -14px 34px rgba(0,0,0,0.5);
-  transform:translateY(100%); transition:transform .28s ease;
-}
-#log-panel.open{ display:block; transform:translateY(0); }
-#log-panel .lg-turn{ color:var(--gold); font-family:'Shippori Mincho',serif; margin-top:6px; }
-#log-panel .lg-turn:first-child{ margin-top:0; }
-#log-panel .lg-handle{
-  display:block; margin:0 auto 10px; width:36px; height:4px; border-radius:999px;
-  background:var(--gold-dim); border:none; cursor:pointer;
-}
-#log-panel .lg-close-x{
-  position:absolute; top:12px; right:14px; width:28px; height:28px; border-radius:50%;
-  background:rgba(212,175,55,0.1); border:1px solid rgba(212,175,55,0.4); color:var(--ivory);
-  font-size:15px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;
-}
-#log-panel .lg-close-x:hover{ background:rgba(212,175,55,0.22); }
-@media (prefers-reduced-motion: reduce){ #log-panel{ transition:none; } }
-
-/* ---------- turn banner ---------- */
-.turn-banner{
-  position:fixed; top:12%; left:50%; z-index:70; pointer-events:none;
-  background:linear-gradient(135deg, rgba(240,215,137,0.97), rgba(212,175,55,0.97));
-  color:var(--ink); padding:10px 28px; border-radius:999px;
-  font-family:'Shippori Mincho',serif; font-size:15px; letter-spacing:.12em;
-  box-shadow:0 12px 32px rgba(0,0,0,0.55);
-  opacity:0; transform:translate(-50%,-16px) scale(.9);
-  animation:bannerPop 1.7s cubic-bezier(.22,1,.36,1) forwards;
-}
-@keyframes bannerPop{
-  0%{ opacity:0; transform:translate(-50%,-16px) scale(.88); }
-  14%{ opacity:1; transform:translate(-50%,0) scale(1); }
-  78%{ opacity:1; transform:translate(-50%,0) scale(1); }
-  100%{ opacity:0; transform:translate(-50%,-10px) scale(.96); }
-}
-@media (prefers-reduced-motion: reduce){ .turn-banner{ animation:none; opacity:1; transform:translate(-50%,0); } }
-
-.turn-banner.toast{
-  top:auto; bottom:14%; max-width:88vw; text-align:center; font-size:13px; letter-spacing:.06em;
-  padding:9px 20px; animation:toastPop 2.2s cubic-bezier(.22,1,.36,1) forwards;
-}
-.turn-banner.toast.info{
-  background:linear-gradient(135deg, rgba(239,231,210,0.97), rgba(195,185,164,0.97)); color:var(--ink);
-}
-.turn-banner.toast.danger{
-  background:linear-gradient(135deg, rgba(139,58,107,0.97), rgba(74,25,66,0.97)); color:#f7f0df;
-}
-@keyframes toastPop{
-  0%{ opacity:0; transform:translate(-50%,10px) scale(.92); }
-  12%{ opacity:1; transform:translate(-50%,0) scale(1); }
-  82%{ opacity:1; transform:translate(-50%,0) scale(1); }
-  100%{ opacity:0; transform:translate(-50%,6px) scale(.97); }
-}
-@media (prefers-reduced-motion: reduce){ .turn-banner.toast{ animation:none; } }
-.modal-overlay{ position:fixed; inset:0; background:rgba(5,4,10,0.72); backdrop-filter:blur(2px); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
-.modal-overlay.open{ display:flex; }
-.modal-box{
-  background:var(--bg-panel); border:1px solid var(--gold-dim); border-radius:18px; padding:26px 22px; max-width:360px; width:100%;
-  text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.6);
-  animation:modalIn .25s ease both;
-  position:relative; overflow:visible;
-}
-.modal-box::before, .modal-box::after{
-  content:''; position:absolute; width:18px; height:18px; pointer-events:none; opacity:.5; border-color:var(--gold-dim);
-}
-.modal-box::before{ top:8px; left:8px; border-top:1.5px solid; border-left:1.5px solid; border-radius:5px 0 0 0; }
-.modal-box::after{ bottom:8px; right:8px; border-bottom:1.5px solid; border-right:1.5px solid; border-radius:0 0 5px 0; }
-@keyframes modalIn{ from{opacity:0; transform:scale(.92) translateY(8px);} to{opacity:1; transform:none;} }
-.tutorial-card-preview{ display:flex; justify-content:center; margin:10px 0; }
-.tutorial-card-preview img{
-  width:130px; aspect-ratio:300/505; object-fit:cover; border-radius:8px;
-  box-shadow:0 6px 18px rgba(0,0,0,0.5), 0 0 0 2px rgba(212,175,55,0.7);
-}
-.tutorial-progress{ font-size:11px; color:var(--ivory-dim); letter-spacing:.1em; margin:8px 0 4px; }
-.modal-box h4{ font-family:'Shippori Mincho',serif; color:var(--gold-light); font-size:16px; margin:0 0 12px; letter-spacing:.05em;}
-.modal-box p{ font-size:13.5px; line-height:1.8; color:var(--ivory); margin:0 0 16px; }
-.modal-box .peek-card{ margin:0 auto 16px; }
-
-.card-inline-img{ animation:flipReveal .55s cubic-bezier(.2,1,.3,1) .05s both; }
-@keyframes flipReveal{ from{ transform:rotateY(90deg) scale(.9); opacity:0; } to{ transform:rotateY(0deg) scale(1); opacity:1; } }
-@media (prefers-reduced-motion: reduce){ .card-inline-img{ animation:none; } }
-
-.burst-particle{
-  position:absolute; left:50%; top:32%; width:6px; height:6px; border-radius:50%;
-  pointer-events:none; animation:burstOut .95s ease-out forwards;
-}
-@keyframes burstOut{ to{ transform:translate(var(--tx), var(--ty)) scale(0); opacity:0; } }
-@media (prefers-reduced-motion: reduce){ .burst-particle{ display:none; } }
-
-/* ---------- help modal ---------- */
-.help-box{
-  max-width:600px; max-height:82vh; overflow-y:auto; text-align:left; padding-top:40px;
-}
-.help-box h3{ font-family:'Shippori Mincho',serif; color:var(--gold-light); font-size:16px; margin:0 0 10px; letter-spacing:.05em; text-align:center; }
-.help-close{
-  position:absolute; top:12px; right:14px; background:none; border:none; color:var(--ivory-dim);
-  font-size:20px; line-height:1; cursor:pointer; padding:4px 8px; border-radius:8px;
-}
-.help-close:hover{ color:var(--ivory); background:rgba(212,175,55,0.10); }
-
-
-/* ---------- game over ---------- */
-#gameover-overlay .modal-box{ max-width:400px; }
-#gameover-overlay .result-title{
-  font-family:'Cormorant Garamond',serif; font-style:italic; font-size:32px; color:var(--gold-light);
-  margin-bottom:6px; text-shadow:0 0 22px rgba(240,215,137,0.4);
-  animation:titlePop .6s cubic-bezier(.2,1.4,.4,1) both;
-}
-@keyframes titlePop{ 0%{ opacity:0; transform:scale(.7); } 70%{ transform:scale(1.06); } 100%{ opacity:1; transform:scale(1); } }
-#gameover-overlay .result-sub{ font-size:12.5px; color:var(--ivory-dim); margin-bottom:18px; }
-#gameover-overlay .result-streak{
-  font-size:13px; font-weight:600; border-radius:999px; padding:6px 14px; margin:0 0 14px; display:inline-block;
-}
-#gameover-overlay .result-streak.win{ background:rgba(212,175,55,0.16); color:var(--gold-light); border:1px solid rgba(212,175,55,0.4); }
-#gameover-overlay .result-streak.lose{ background:rgba(139,58,107,0.12); color:var(--velvet-light); border:1px solid rgba(139,58,107,0.3); font-weight:400; }
-#gameover-overlay .result-record{ font-size:11.5px; color:var(--ivory-dim); margin-top:10px; }
-#gameover-overlay .reveal-row{ animation:fadeUp .5s ease both; }
-#gameover-overlay .reveal-row:nth-child(2){ animation-delay:.12s; }
-#gameover-overlay .reveal-row:nth-child(3){ animation-delay:.24s; }
-@media (prefers-reduced-motion: reduce){ #gameover-overlay .result-title{ animation:none; } #gameover-overlay .reveal-row{ animation:none; } }
-
-footer.credits{ text-align:center; font-size:9.5px; color:#8f8168; margin-top:12px; letter-spacing:.08em; flex:0 0 auto; }
-body.table-mode footer.credits{ display:none; }
-
-@media (max-width:420px){
-  .card{ width:108px; }
-  .card-back{ width:80px; }
-}
-
-/* ---------- 横向き（ランドスケープ）のスマホ向け調整 ---------- */
-@media (orientation:landscape) and (max-height:500px){
-  header.top{ padding:5px 10px 3px; }
-  header.top .eyebrow, header.top .subtitle, header.top .divider{ display:none; }
-  header.top h1{ font-size:19px; margin:0; }
-  .sfx-toggle{ width:24px; height:24px; font-size:11px; top:calc(6px + env(safe-area-inset-top, 0px)); right:8px; }
-  .bgm-toggle{ width:24px; height:24px; font-size:11px; top:calc(6px + env(safe-area-inset-top, 0px)); right:36px; }
-  #start-screen{ padding:2px 6px 6px; }
-  .lede{ font-size:12px; line-height:1.5; margin:4px auto 8px; }
-  .rules-toggle-wrap{ margin-bottom:4px; }
-  .difficulty-wrap{ margin:6px 0 4px; }
-  .start-deco{ display:none; }
-  .status-strip{ padding:0 2px 2px; }
-  .zone{ padding:6px 12px; }
-  .zone::before, .zone::after{ width:9px; height:9px; }
-  .hand-area{ margin-top:4px; }
-  .card{ width:88px; }
-  .card-back{ width:64px; }
-  #action-panel{ padding:8px; }
-  #action-panel .prompt{ font-size:12px; margin-bottom:6px; }
-  .zone-label{ font-size:9px; top:-7px; padding:0 6px; }
-  .fab-discard{ width:42px; height:42px; font-size:18px; right:10px; bottom:10px; }
-  .player-name{ font-size:12px; }
-}
-
-/* ---------- タブレット・PC（幅に余裕がある画面）向けの拡大表示 ---------- */
-@media (min-width:700px){
-  /* カードの大きさを画面の「高さ」にも連動させる（clamp）。
-     固定サイズのままだと、ノートPCなど縦幅の狭い画面でカードが画面からはみ出し、
-     舞踏会画面全体がスクロールを必要としてしまうため、狭い高さでは自動的に縮小する。 */
-  .card{ width:clamp(108px, 15.5vh, 162px); }
-  .card-back{ width:clamp(84px, 12vh, 124px); }
-  .zone{ padding:clamp(10px, 1.6vh, 18px) 24px; }
-  #action-zone-wrap{ min-height:clamp(96px, 15vh, 150px); }
-  #action-panel{ padding:18px 20px; }
-  #action-panel .prompt{ font-size:15px; }
-  .hand-area{ gap:16px; }
-}
-/* それでも収まりきらない場合の保険として、各ゾーンが個別に縮小・内部スクロールできるようにしておく
-   （table全体が一括でスクロールする、より不格好な見た目になるのを避けるため）。 */
-@media (min-width:700px) and (max-height:820px){
-  .zone{ min-height:0; overflow-y:auto; }
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚔️ Monster Merge Quest</title>
+
+  <!-- 保存済みテーマを即時反映（画面のちらつき防止） -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('monsterMergeTheme') || 'dungeon';
+      document.documentElement.setAttribute('data-theme', saved);
+    })();
+  </script>
+
+  <!-- PWA 設定 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#d4a012">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MonsterMerge">
+
+  <!-- アイコン (iOS Safari 向け・全サイズ) -->
+  <link rel="apple-touch-icon" sizes="58x58"   href="icon-58.png">
+  <link rel="apple-touch-icon" sizes="80x80"   href="icon-80.png">
+  <link rel="apple-touch-icon" sizes="87x87"   href="icon-87.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="icon-120.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+  <link rel="apple-touch-icon"                 href="icon-180.png">
+
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script type="module" src="firebase.js"></script>
+
+  <!-- Service Worker 登録 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(() => console.log('✅ Service Worker 登録完了'))
+          .catch(err => console.warn('Service Worker 登録失敗:', err));
+      });
+      // 新しいService Workerが有効化されたら自動でリロードして最新版を反映
+      let hasReloaded = false;
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SW_UPDATED' && !hasReloaded) {
+          hasReloaded = true;
+          window.location.reload();
+        }
+      });
+    }
+  </script>
 </head>
 <body>
-<div class="sparkle-layer" id="sparkle-layer"></div>
+  <!-- 松明エフェクト -->
+  <div class="torch torch-left">🔥</div>
+  <div class="torch torch-right">🔥</div>
 
-<!-- ============ SPLASH SCREEN ============ -->
-<div id="splash-screen" onclick="UI.dismissSplash()" role="button" tabindex="0" aria-label="タップしてはじめる" onkeydown="if(event.key==='Enter'||event.key===' '){UI.dismissSplash();}">
-  <div class="splash-frame">
-  <span class="splash-corner tl" aria-hidden="true"></span>
-  <span class="splash-corner tr" aria-hidden="true"></span>
-  <span class="splash-corner bl" aria-hidden="true"></span>
-  <span class="splash-corner br" aria-hidden="true"></span>
-  <div class="splash-particles" id="splash-particles" aria-hidden="true"></div>
-  <div class="splash-logo-wrap">
-    <div class="splash-orbit" aria-hidden="true"><span></span><span></span><span></span></div>
-    <h1 class="splash-title" id="splash-title" aria-label="MASQUERADE"></h1>
+  <div id="app">
+    <header id="game-header">
+      <div id="header-top-row">
+        <button id="home-btn" title="タイトルに戻る">🏠</button>
+        <h1 id="game-title">⚔️ MONSTER MERGE</h1>
+        <button id="shop-btn" title="ショップ（ゴールドを使う）">🛒</button>
+        <button id="restart-btn" title="最初からやり直す">↺</button>
+      </div>
+      <div id="header-bottom-row">
+        <div id="score-panel">
+          <div class="score-block">
+            <span class="score-label">💰 GOLD</span>
+            <span id="gold-display">0</span>
+          </div>
+          <div class="score-block">
+            <span class="score-label">🪙 現在のスコア</span>
+            <span id="score-display">0</span>
+          </div>
+          <div class="score-block">
+            <span class="score-label">👑 自己ベスト</span>
+            <span id="best-display">0</span>
+          </div>
+        </div>
+        <div id="preview-panel-group">
+          <div id="next-panel">
+            <span class="score-label">NEXT</span>
+            <canvas id="next-canvas" width="60" height="60"></canvas>
+          </div>
+          <div id="next-next-panel">
+            <span class="score-label">NEXT+1</span>
+            <canvas id="next-next-canvas" width="44" height="44"></canvas>
+          </div>
+          <div id="hold-panel" title="ホールド（現在のモンスターをキープ）">
+            <span class="score-label">HOLD</span>
+            <canvas id="hold-canvas" width="60" height="60"></canvas>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div id="game-container">
+      <div id="danger-line"></div>
+      <!-- ダンジョン装飾 -->
+      <div class="dungeon-left"></div>
+      <div class="dungeon-right"></div>
+      <canvas id="game-canvas"></canvas>
+      <canvas id="effect-canvas"></canvas>
+    </div>
+
+    <div id="evolution-bar">
+      <div class="evo-label">進化 →</div>
+      <div id="evo-list"></div>
+    </div>
+
+    <!-- タイトル画面 -->
+    <div id="title-screen" class="hidden">
+      <div id="title-box">
+        <div id="title-logo"><img src="icon-180.png" alt="Monster Merge Quest"></div>
+        <div id="title-name">MONSTER<br>MERGE QUEST</div>
+        <div id="title-sub">モンスター合体パズル冒険！</div>
+
+        <div id="mission-panel">
+          <div id="mission-header">📋 本日のミッション</div>
+          <div id="mission-desc">-</div>
+          <div id="mission-bar"><div id="mission-bar-fill"></div></div>
+          <div id="mission-status">0/0</div>
+          <div id="mission-streak" class="hidden">🔥 0日連続達成中</div>
+        </div>
+
+        <button id="start-btn">⚔️ 冒険を始める！</button>
+        <button id="catch-game-btn">🧺 モンスターキャッチ（ミニゲーム）</button>
+        <button id="title-ranking-btn">🏆 殿堂ランキング</button>
+        <div id="title-settings-row">
+          <button id="difficulty-btn" class="title-icon-btn" title="難易度">🎚️</button>
+          <button id="theme-btn" class="title-icon-btn" title="テーマを選ぶ">🎨</button>
+          <button id="sound-toggle-btn" class="title-icon-btn" title="サウンド">🔊</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 設定ポップアップ（難易度/テーマ/サウンドの共通コンテナ） -->
+
+    <!-- ゲームオーバー -->
+    <div id="gameover-screen" class="hidden">
+      <div id="gameover-box">
+        <div id="gameover-title">💀 DEFEATED</div>
+        <div id="final-score-label">GOLD EARNED</div>
+        <div id="final-score">0</div>
+        <div id="gameover-name-section">
+          <input id="player-name" type="text" placeholder="冒険者の名前..." maxlength="12">
+          <button id="submit-score-btn">殿堂入り</button>
+        </div>
+        <button id="retry-btn">⚔️ 再挑戦</button>
+        <button id="ranking-btn">🏆 殿堂を見る</button>
+        <button id="title-btn">🏰 タイトルに戻る</button>
+      </div>
+    </div>
+
+    <!-- ランキング -->
+    <div id="ranking-screen" class="hidden">
+      <div id="ranking-box">
+        <div id="ranking-title">🏆 冒険者殿堂</div>
+        <div id="ranking-tabs">
+          <button class="ranking-tab active" data-board="mmq">⚔️ MMQ</button>
+          <button class="ranking-tab" data-board="catch">🧺 キャッチ</button>
+        </div>
+        <div id="ranking-list"></div>
+        <button id="close-ranking-btn">🏰 タイトルに戻る</button>
+      </div>
+    </div>
+
+    <!-- テーマ選択 -->
+    <div id="theme-screen" class="hidden">
+      <div id="theme-box">
+        <div id="theme-title">🎨 テーマを選ぶ</div>
+        <div id="theme-list">
+          <button class="theme-option" data-theme-id="dungeon">
+            <span class="theme-swatch sw-dungeon"></span>
+            <span class="theme-option-name">漆黒の地下大迷宮</span>
+          </button>
+          <button class="theme-option" data-theme-id="volcanic">
+            <span class="theme-swatch sw-volcanic"></span>
+            <span class="theme-option-name">業火の火山地帯</span>
+          </button>
+          <button class="theme-option" data-theme-id="ice">
+            <span class="theme-swatch sw-ice"></span>
+            <span class="theme-option-name">氷結の永久凍土</span>
+          </button>
+          <button class="theme-option" data-theme-id="cosmic">
+            <span class="theme-swatch sw-cosmic"></span>
+            <span class="theme-option-name">星霜の魔法陣</span>
+          </button>
+          <button class="theme-option" data-theme-id="meadow">
+            <span class="theme-swatch sw-meadow"></span>
+            <span class="theme-option-name">黄金の草原</span>
+          </button>
+          <button class="theme-option" data-theme-id="sakura">
+            <span class="theme-swatch sw-sakura"></span>
+            <span class="theme-option-name">桜霞の郷</span>
+          </button>
+        </div>
+        <button id="theme-close-btn">閉じる</button>
+      </div>
+    </div>
+
+    <!-- 難易度選択 -->
+    <div id="difficulty-screen" class="hidden">
+      <div id="difficulty-box">
+        <div id="difficulty-title">🎚️ 難易度を選ぶ</div>
+        <div id="difficulty-list">
+          <button class="difficulty-option" data-difficulty-id="easy">
+            <span>初級</span>
+            <span class="difficulty-option-desc">ゆっくり落下・出現モンスターも控えめ</span>
+          </button>
+          <button class="difficulty-option" data-difficulty-id="normal">
+            <span>中級</span>
+            <span class="difficulty-option-desc">標準的な速度とバランス</span>
+          </button>
+          <button class="difficulty-option" data-difficulty-id="hard">
+            <span>上級</span>
+            <span class="difficulty-option-desc">落下が速く、強いモンスターも出現。高スコア倍率</span>
+          </button>
+        </div>
+        <button id="difficulty-close-btn">閉じる</button>
+      </div>
+    </div>
+
+    <!-- ショップ -->
+    <div id="shop-screen" class="hidden">
+      <div id="shop-box">
+        <div id="shop-title">🛒 ショップ</div>
+        <div id="shop-gold-row">
+          <span class="score-label">所持ゴールド</span>
+          <span id="shop-gold">0</span>
+        </div>
+        <div id="shop-hint" class="hidden"></div>
+        <div id="shop-list"></div>
+        <button id="shop-close-btn">閉じる</button>
+      </div>
+    </div>
+
+    <!-- モンスターキャッチ -->
+    <div id="catch-screen" class="hidden">
+      <div id="catch-header">
+        <button id="catch-home-btn" title="タイトルに戻る">🏠</button>
+        <div id="catch-stats">
+          <div class="catch-stat">
+            <span class="score-label">TIME</span>
+            <span id="catch-time">60s</span>
+          </div>
+          <div class="catch-stat">
+            <span class="score-label">SCORE</span>
+            <span id="catch-score">0</span>
+          </div>
+          <div class="catch-stat">
+            <span class="score-label">BEST</span>
+            <span id="catch-best">0</span>
+          </div>
+          <div id="catch-lives"></div>
+        </div>
+        <div id="catch-combo-badge" class="hidden">0連続！</div>
+      </div>
+      <div id="catch-field">
+        <canvas id="catch-canvas"></canvas>
+        <div id="catch-ready-overlay">
+          <div id="catch-ready-title">🧺 モンスターキャッチ</div>
+          <div id="catch-ready-desc">
+            60秒間で、落ちてくるモンスターを<br>カゴでキャッチしてスコアを稼ごう！<br>
+            <span class="catch-hint">👆 画面のどこでも左右にドラッグでカゴが動きます</span><br>
+            <span class="catch-warn">💣 爆弾スライムを3回キャッチするとゲームオーバー！</span>
+          </div>
+          <button id="catch-start-btn">▶ スタート</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- モンスターキャッチ：結果画面 -->
+    <div id="catch-result-screen" class="hidden">
+      <div id="catch-result-box">
+        <div id="catch-result-title">💀 GAME OVER</div>
+        <div id="catch-result-score-label">SCORE</div>
+        <div id="catch-result-score">0</div>
+        <div id="catch-result-best-label">BEST: <span id="catch-result-best">0</span></div>
+        <div id="catch-result-status"></div>
+        <button id="catch-retry-btn">🔄 もう一度</button>
+        <button id="catch-result-ranking-btn">🏆 ランキングを見る</button>
+        <button id="catch-result-close-btn">🏰 タイトルに戻る</button>
+      </div>
+    </div>
   </div>
-  <div class="splash-subtitle">仮面舞踏会と貴族たちの密約</div>
-  <div class="splash-bottom-area">
-    <div class="splash-action-slot" id="splash-action-slot">
-      <div class="splash-loading-state" id="splash-loading-state">
-        <div class="splash-progress" id="splash-progress" aria-hidden="true">
-          <div class="splash-progress-fill" id="splash-progress-fill"></div>
-        </div>
-        <div class="splash-sub" id="splash-sub"></div>
-      </div>
-      <div class="splash-button-state" id="splash-button-state">
-        <div class="splash-btn-flourish" id="splash-btn-flourish" aria-hidden="true">
-          <span class="fl-line l"></span><span class="fl-mark">❖</span><span class="fl-line r"></span>
-        </div>
-        <button class="splash-start-btn" id="splash-start-btn" onclick="event.stopPropagation(); UI.dismissSplash();">はじめる</button>
-      </div>
-    </div>
-  </div>
-  </div>
-</div>
 
-<div id="app">
-  <header class="top" id="site-header">
-    <button class="bgm-toggle" id="bgm-toggle" onclick="UI.toggleBgm()" title="BGMのオン/オフ" aria-label="BGMのオン/オフ">🎵</button>
-    <button class="sfx-toggle" id="sfx-toggle" onclick="UI.toggleSfx()" title="効果音のオン/オフ" aria-label="効果音のオン/オフ">🔊</button>
-    <div class="eyebrow">仮面領の一夜</div>
-    <h1>MASQUERADE</h1>
-    <div class="subtitle">王位継承を賭けた、一夜限りの舞踏会</div>
-    <div class="divider"></div>
-  </header>
-
-  <audio id="bgm-audio" loop preload="none">
-    <source src="./bgm.ogg" type="audio/ogg">
-    <source src="./bgm.mp3" type="audio/mpeg">
-  </audio>
-
-  <!-- ============ START SCREEN ============ -->
-  <div id="start-screen">
-    <p class="lede">
-      基本の手札は1枚。自分の番には山札から1枚引いて2枚になり、そのうち1枚を場に出すと、そのカードの効果が発動します。最後まで残った人、または一番大きい数字を持っていた人の勝ちです。
-    </p>
-    <div class="rules-toggle-wrap">
-      <button class="link-btn" id="rules-toggle-btn" onclick="UI.toggleRules()">▾ 仮面の一覧とルールを見る</button>
-    </div>
-    <div id="rules-panel"></div>
-
-    <div class="difficulty-wrap">
-      <div class="difficulty-label">対戦形式</div>
-      <div class="difficulty-row" id="mode-row"></div>
-      <div class="difficulty-epithet" id="mode-epithet"></div>
-    </div>
-
-    <div class="mini-flourish" aria-hidden="true"><span></span></div>
-
-    <div class="difficulty-wrap" id="difficulty-wrap">
-      <div class="difficulty-label">対戦相手の格</div>
-      <div class="difficulty-row" id="difficulty-row"></div>
-      <div class="difficulty-epithet" id="difficulty-epithet"></div>
-      <div class="stats-panel" id="stats-panel"></div>
-    </div>
-
-    <div class="difficulty-wrap" id="online-wrap" style="display:none;">
-      <div class="difficulty-label">オンライン対戦</div>
-      <div id="online-panel"></div>
-    </div>
-
-    <div class="start-actions" id="start-actions-cpu">
-      <button class="btn-grand" onclick="UI.confirmStartGame()">舞踏会をはじめる</button>
-    </div>
-
-    <div class="tutorial-link-wrap">
-      <button class="link-btn" onclick="Tutorial.start()">▾ はじめての方はこちら（チュートリアル）</button>
-    </div>
-
-    <div class="start-deco" id="start-deco" aria-hidden="true"></div>
-  </div>
-
-  <!-- ============ TABLE ============ -->
-  <div id="table">
-    <div class="table-glint-layer" id="table-glint-layer" aria-hidden="true"></div>
-    <div class="stale-banner" id="stale-banner" style="display:none;">
-      <span>⚠ 対戦相手との接続が途切れているようです</span>
-      <button class="btn ghost" style="font-size:11px; padding:5px 10px;" onclick="UI.confirmLeaveStale()">対局を終了する</button>
-    </div>
-    <div class="status-strip">
-      <button class="icon-btn" onclick="UI.backToStart()" title="ホームへ戻る" aria-label="ホームへ戻る">← 戻る</button>
-      <div class="turn-badge" id="turn-badge">―</div>
-      <div class="status-right">
-        <button class="icon-btn" id="quick-chat-btn" onclick="UI.showQuickChatPicker()" title="簡単な質問を送る" aria-label="簡単な質問を送る" style="display:none;">💬</button>
-        <button class="icon-btn" onclick="UI.showHelpModal()" title="仮面の説明" aria-label="仮面の説明を見る">？</button>
-        <button class="icon-btn" onclick="UI.toggleLog()" title="舞踏会の記録" aria-label="舞踏会の記録を開く">📜</button>
-      </div>
-    </div>
-
-    <div class="zone" id="opponent-zone">
-      <div class="zone-label" id="opp-zone-label">対戦相手</div>
-      <div class="player-row">
-        <div class="player-name">🎭 <span id="opp-name">仮面卿</span>
-          <span class="protect-icon" id="opp-protect">🛡 加護中</span>
-          <span class="eliminated-tag" id="opp-eliminated">退場</span>
-        </div>
-        <div class="deck-count-mini" id="opp-deck-count" title="対戦相手の山札の残り枚数">
-          <span class="deck-mini-icon" aria-hidden="true">🂠</span><span id="opp-deck-count-text">0</span>
-        </div>
-      </div>
-      <div class="hand-area" id="opp-hand"></div>
-    </div>
-
-    <div class="zone" id="action-zone-wrap">
-      <div class="zone-label">場</div>
-      <div id="action-panel">
-        <div class="prompt" id="ap-prompt">―</div>
-      </div>
-    </div>
-
-    <div class="zone" id="player-zone">
-      <div class="zone-label" id="me-zone-label">あなた</div>
-      <div class="player-row">
-        <div class="player-name">🕯 <span id="me-name">あなた</span>
-          <span class="protect-icon" id="me-protect">🛡 加護中</span>
-          <span class="eliminated-tag" id="me-eliminated">退場</span>
-        </div>
-        <div class="deck-count-mini" id="me-deck-count" title="自分の山札の残り枚数">
-          <span class="deck-mini-icon" aria-hidden="true">🂠</span><span id="me-deck-count-text">0</span>
-        </div>
-      </div>
-      <div class="hand-area" id="me-hand"></div>
-    </div>
-
-    <button class="fab-discard" id="fab-discard" onclick="UI.showDiscardModal()" title="これまで場に出た仮面を見る" aria-label="これまで場に出た仮面の一覧を見る">🂠</button>
-  </div>
-
-  <div id="log-panel"><button class="lg-handle" onclick="UI.toggleLog()" aria-label="閉じる"></button><button class="lg-close-x" onclick="UI.toggleLog()" aria-label="閉じる">×</button></div>
-
-  <footer class="credits">MASQUERADE — an original masquerade deduction card game</footer>
-</div>
-
-<!-- 各カード効果ごとの演出オーバーレイ（結果モーダルより下のレイヤーで一瞬光る） -->
-<div class="effect-stage" id="effect-stage" aria-hidden="true">
-  <div class="effect-stage-ring" aria-hidden="true"></div>
-  <div class="effect-stage-particles" id="effect-stage-particles" aria-hidden="true"></div>
-  <div class="effect-stage-icon" id="effect-stage-icon"></div>
-  <div class="effect-stage-label" id="effect-stage-label"></div>
-</div>
-
-<!-- peek / info modal -->
-<div class="modal-overlay" id="info-overlay">
-  <div class="modal-box" id="info-box"></div>
-</div>
-
-<!-- game over modal -->
-<div class="modal-overlay" id="gameover-overlay">
-  <div class="modal-box" id="gameover-box"></div>
-</div>
-
-<!-- help / rules modal -->
-<div class="modal-overlay" id="help-overlay">
-  <div class="modal-box help-box" id="help-box"></div>
-</div>
-
-<!-- discard history modal -->
-<div class="modal-overlay" id="discard-overlay">
-  <div class="modal-box help-box" id="discard-box"></div>
-</div>
-
-<!-- Firebase（オンライン対戦用）。firebase-app / firebase-auth / firebase-firestore の compat 版を使用。
-     利用するには、ご自身の Firebase プロジェクトを用意し、下の mask-game.js 内 firebaseConfig に
-     ご自身のプロジェクトの設定値を貼り付けてください（詳しくは README.md を参照）。 -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="mask-game.js"></script>
+  <script src="game.js" defer></script>
 </body>
 </html>

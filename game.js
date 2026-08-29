@@ -864,7 +864,7 @@ function handleDemonFusion(mA, mB, mx, my) {
   removeMonster(mA);
   removeMonster(mB);
 
-  const bonus = MONSTERS[topIdx].score * 25 * DIFFICULTIES[currentDifficulty].scoreMult;
+  const bonus = MONSTERS[topIdx].score * 60 * DIFFICULTIES[currentDifficulty].scoreMult;
   addScore(Math.round(bonus));
 
   spawnMagicExplosion(mx, my, monsterDef(topIdx), 8);
@@ -872,12 +872,7 @@ function handleDemonFusion(mA, mB, mx, my) {
   triggerScreenShake(2);
   triggerVibration([50, 40, 50, 40, 90]);
   SoundManager.demonFusion();
-  showLevelUp('👑 魔王共鳴！莫大な力が解放された！');
-
-  setTimeout(() => {
-    const newBody = addMonster(topIdx, mx, my, true);
-    addDangerGrace(newBody, 1000 + topIdx * 150);
-  }, 80);
+  showLevelUp('👑 魔王共鳴！莫大な力と引き換えに、2体の魔王が消滅した！');
 }
 
 // ===== スコア加算共通処理（ミッション連携込み） =====
