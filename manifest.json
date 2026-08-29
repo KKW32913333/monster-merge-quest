@@ -1,19 +1,27 @@
 {
-  "name": "Monster Merge Quest",
-  "short_name": "MonsterMerge",
-  "description": "モンスターを合体・進化させる落下パズル冒険ゲーム！",
-  "start_url": "./index.html?v=3",
-  "display": "fullscreen",
+  "name": "MASQUERADE ― 仮面領の一夜",
+  "short_name": "MASQUERADE",
+  "description": "正体を隠したまま王位を競う、一夜限りの仮面舞踏会カードゲーム",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#5bb8f5",
-  "theme_color": "#5bb8f5",
+  "background_color": "#1a1428",
+  "theme_color": "#1a1428",
   "lang": "ja",
   "icons": [
-    { "src": "icon-58.png?v=3",   "sizes": "58x58",     "type": "image/png" },
-    { "src": "icon-80.png?v=3",   "sizes": "80x80",     "type": "image/png" },
-    { "src": "icon-87.png?v=3",   "sizes": "87x87",     "type": "image/png" },
-    { "src": "icon-120.png?v=3",  "sizes": "120x120",   "type": "image/png" },
-    { "src": "icon-180.png?v=3",  "sizes": "180x180",   "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-1024.png?v=3", "sizes": "1024x1024", "type": "image/png", "purpose": "any maskable" }
+    { "src": "./favicon-48x48.png", "sizes": "48x48", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "新しい舞踏会をはじめる",
+      "short_name": "新規対戦",
+      "description": "タイトル画面から新しい対戦をすぐにはじめる",
+      "url": "./index.html",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }
