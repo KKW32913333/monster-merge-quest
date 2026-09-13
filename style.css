@@ -397,7 +397,7 @@ html, body {
   font-weight: bold;
 }
 
-#home-btn, #shop-btn, #restart-btn {
+#home-btn, #shop-btn, #pause-btn, #restart-btn {
   flex-shrink: 0;
   width: 34px; height: 34px;
   display: flex; align-items: center; justify-content: center;
@@ -414,6 +414,11 @@ html, body {
   background: rgba(124,179,66,0.12);
 }
 #shop-btn:hover { background: rgba(124,179,66,0.25); }
+#pause-btn {
+  border-color: var(--accent-ice, #5cc8ff); color: var(--accent-ice, #5cc8ff);
+  background: rgba(92,200,255,0.12);
+}
+#pause-btn:hover { background: rgba(92,200,255,0.25); }
 #restart-btn {
   border-color: var(--accent-red); color: var(--accent-red);
   background: rgba(255,59,31,0.1);
@@ -1316,3 +1321,34 @@ button {
   0%, 100% { box-shadow: 0 0 8px rgba(255,0,51,0.4); }
   50%      { box-shadow: 0 0 16px rgba(255,0,51,0.75); }
 }
+
+/* ===== 一時停止オーバーレイ ===== */
+#pause-overlay {
+  position: fixed; inset: 0; z-index: 240;
+  background: rgba(8,4,14,0.85); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+}
+#pause-box {
+  background: var(--bg-box);
+  border: 3px solid var(--panel-border);
+  border-radius: 24px;
+  padding: 36px 32px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  min-width: 260px; text-align: center;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  animation: fadeInUp 0.25s ease;
+}
+#pause-icon { font-size: 2.2rem; margin-bottom: 4px; }
+#pause-title {
+  font-size: 1.3rem; font-weight: bold; color: var(--accent-gold-bright);
+  text-shadow: 0 0 12px var(--glow-warm);
+}
+#pause-desc { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 12px; }
+#pause-resume-btn {
+  width: 100%; padding: 13px;
+  background: var(--grad-btn-primary);
+  border: none; color: #fff; font-weight: bold; font-size: 0.95rem;
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--shadow-solid-primary);
+}
+#pause-resume-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow-solid-primary); }

@@ -803,7 +803,7 @@ function setupCollision() {
 
 // ===== ゲームループ =====
 function gameLoop(ts) {
-  if (!isGameOver) {
+  if (!isGameOver && !isPaused) {
     processMergeQueue();
     checkDanger();
     updateDemonBonusBadge();
@@ -811,6 +811,48 @@ function gameLoop(ts) {
   renderGame();
   renderEffects(ts);
   requestAnimationFrame(gameLoop);
+}
+
+// ===== 一時停止 =====
+let isPaused = false;
+let pauseStartTime = null;
+
+function togglePause() {
+  if (isGameOver) return;
+  if (isPaused) resumeGame(); else pauseGame();
+}
+
+function pauseGame() {
+  if (isPaused || isGameOver) return;
+  isPaused = true;
+  pauseStartTime = Date.now();
+  Runner.stop(runner);
+  if (SoundManager.bgmGain && SoundManager.ctx) {
+    SoundManager.bgmGain.gain.setTargetAtTime(0, SoundManager.ctx.currentTime, 0.15);
+  }
+  document.getElementById('pause-overlay').classList.remove('hidden');
+  const btn = document.getElementById('pause-btn');
+  if (btn) btn.textContent = '▶';
+}
+
+function resumeGame() {
+  if (!isPaused) return;
+  // 一時停止していた時間だけ、危険ラインの猶予タイマー類を後ろにずらす
+  // （見ていない間に経過した時間が不当にカウントされて、再開直後にゲームオーバーになるのを防ぐ）
+  const pausedFor = Date.now() - pauseStartTime;
+  if (dangerStartTime !== null) dangerStartTime += pausedFor;
+  mergeGraceEntries.forEach(e => { e.until += pausedFor; });
+  if (typeof catchMagnetUntil === 'number' && catchMagnetUntil > 0) catchMagnetUntil += pausedFor;
+
+  isPaused = false;
+  pauseStartTime = null;
+  Runner.run(runner, engine);
+  if (SoundManager.bgmGain && SoundManager.ctx && !SoundManager.muted) {
+    SoundManager.bgmGain.gain.setTargetAtTime(0.12, SoundManager.ctx.currentTime, 0.3);
+  }
+  document.getElementById('pause-overlay').classList.add('hidden');
+  const btn = document.getElementById('pause-btn');
+  if (btn) btn.textContent = '⏸️';
 }
 
 let demonBonusBadgeShown = false;
@@ -2301,6 +2343,14 @@ function setupInput() {
   const unlockOnce = () => { SoundManager.unlock(); document.removeEventListener('pointerdown', unlockOnce); };
   document.addEventListener('pointerdown', unlockOnce, { once: true });
 
+  // アプリが裏に回った時（他アプリに切り替え・画面ロック等）は自動で一時停止
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) return;
+    const titleHidden = document.getElementById('title-screen').classList.contains('hidden');
+    const gameOverHidden = document.getElementById('gameover-screen').classList.contains('hidden');
+    if (titleHidden && gameOverHidden && !isGameOver && !isPaused) pauseGame();
+  });
+
   // ボタン全般に軽いクリック音（個別に専用音がある場合は上に重なる程度で自然に馴染む）
   document.addEventListener('click', (e) => {
     if (e.target.closest('button')) SoundManager.buttonClick();
@@ -2341,7 +2391,7 @@ function setupInput() {
 // ===== タイトル画面 =====
 function showTitle() {
   // ゲーム状態リセット
-  isGameOver = false; score = 0; gold = 0; dangerAvoidUsesLeft = 3; dangerStartTime = null; mergeGraceEntries = []; resetHold();
+  isGameOver = false; score = 0; gold = 0; dangerAvoidUsesLeft = 3; dangerStartTime = null; mergeGraceEntries = []; isPaused = false; pauseStartTime = null; document.getElementById('pause-overlay').classList.add('hidden'); resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
   document.getElementById('gold-display').textContent = '0';
@@ -2425,6 +2475,8 @@ function showConfirm(message, onYes) {
 function triggerGameOver() {
   if (isGameOver) return;
   isGameOver = true;
+  isPaused = false;
+  document.getElementById('pause-overlay').classList.add('hidden');
   Runner.stop(runner);
   SoundManager.gameOver();
   document.getElementById('final-score').textContent = score;
@@ -2433,7 +2485,7 @@ function triggerGameOver() {
 }
 
 function restartGame() {
-  isGameOver = false; score = 0; gold = 0; dangerAvoidUsesLeft = 3; dangerStartTime = null; mergeGraceEntries = []; resetHold();
+  isGameOver = false; score = 0; gold = 0; dangerAvoidUsesLeft = 3; dangerStartTime = null; mergeGraceEntries = []; isPaused = false; pauseStartTime = null; document.getElementById('pause-overlay').classList.add('hidden'); resetHold();
   particles = []; mergeQueue = []; isTouching = false;
   document.getElementById('score-display').textContent = '0';
   document.getElementById('gold-display').textContent = '0';
@@ -2585,6 +2637,9 @@ function adjustColor(hex, n) {
     document.getElementById('ranking-screen').classList.remove('hidden');
     loadRankingBoard('catch');
   });
+
+  document.getElementById('pause-btn').addEventListener('click', togglePause);
+  document.getElementById('pause-resume-btn').addEventListener('click', resumeGame);
 
   document.getElementById('restart-btn').addEventListener('click', () => {
     if (isGameOver) { restartGame(); return; }
