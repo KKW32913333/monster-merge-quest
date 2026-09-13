@@ -1298,3 +1298,21 @@ button {
   #rotate-overlay { display: flex; }
   #app { visibility: hidden; }
 }
+
+/* ===== 魔王ボーナスバッジ ===== */
+#demon-bonus-badge {
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.62rem; font-weight: bold;
+  background: linear-gradient(135deg, #ff0033, #440011);
+  color: #ffe29a;
+  border: 1px solid rgba(255,180,67,0.6);
+  box-shadow: 0 0 10px rgba(255,0,51,0.5);
+  animation: demonBonusPulse 1.4s ease-in-out infinite;
+  white-space: nowrap;
+}
+@keyframes demonBonusPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255,0,51,0.4); }
+  50%      { box-shadow: 0 0 16px rgba(255,0,51,0.75); }
+}

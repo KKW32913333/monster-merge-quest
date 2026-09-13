@@ -806,10 +806,20 @@ function gameLoop(ts) {
   if (!isGameOver) {
     processMergeQueue();
     checkDanger();
+    updateDemonBonusBadge();
   }
   renderGame();
   renderEffects(ts);
   requestAnimationFrame(gameLoop);
+}
+
+let demonBonusBadgeShown = false;
+function updateDemonBonusBadge() {
+  const active = hasDemonLordOnBoard();
+  if (active === demonBonusBadgeShown) return;
+  demonBonusBadgeShown = active;
+  const badge = document.getElementById('demon-bonus-badge');
+  if (badge) badge.classList.toggle('hidden', !active);
 }
 
 function processMergeQueue() {
@@ -901,9 +911,17 @@ function handleDemonFusion(mA, mB, mx, my) {
 }
 
 // ===== スコア加算共通処理（ミッション連携込み） =====
+const DEMON_LORD_SCORE_BONUS = 1.5; // 魔王が盤面にいる間、獲得スコアがこの倍率になる
+
+function hasDemonLordOnBoard() {
+  const topIdx = MONSTERS.length - 1;
+  return bodies.some(m => m.idx === topIdx);
+}
+
 function addScore(amount) {
-  score += amount;
-  gold  += Math.round(amount * 0.6); // GOLDはスコアと異なる比率で増える独立した通貨
+  const boosted = hasDemonLordOnBoard() ? Math.round(amount * DEMON_LORD_SCORE_BONUS) : amount;
+  score += boosted;
+  gold  += Math.round(boosted * 0.6); // GOLDはスコアと異なる比率で増える独立した通貨
   document.getElementById('score-display').textContent = score;
   document.getElementById('gold-display').textContent = gold;
   if (score > bestScore) {
