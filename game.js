@@ -649,6 +649,31 @@ function init() {
       renderCatchFrame();
     }
   });
+
+  // ===== 横向き検知：プレイ中に横向きになったら物理演算・タイマーを一時停止 =====
+  const landscapeQuery = window.matchMedia('(orientation: landscape) and (max-height: 500px)');
+  let wasLandscapeLocked = false;
+  function handleOrientationLock(isLandscape) {
+    if (isLandscape && !wasLandscapeLocked) {
+      wasLandscapeLocked = true;
+      if (typeof runner !== 'undefined' && runner) Runner.stop(runner);
+      if (typeof catchActive !== 'undefined' && catchActive) stopCatchLoop();
+    } else if (!isLandscape && wasLandscapeLocked) {
+      wasLandscapeLocked = false;
+      const titleHidden = document.getElementById('title-screen').classList.contains('hidden');
+      const gameOverHidden = document.getElementById('gameover-screen').classList.contains('hidden');
+      if (titleHidden && gameOverHidden && !isGameOver) Runner.run(runner, engine);
+      const catchScreen = document.getElementById('catch-screen');
+      if (catchScreen && !catchScreen.classList.contains('hidden') && !catchAnimHandle && catchLives > 0 && catchTimeLeft > 0) {
+        catchActive = true;
+        catchLastTs = performance.now();
+        catchAnimHandle = requestAnimationFrame(catchGameLoop);
+      }
+    }
+  }
+  landscapeQuery.addEventListener('change', (e) => handleOrientationLock(e.matches));
+  handleOrientationLock(landscapeQuery.matches);
+
   buildPhysics();
   setupInput();
   buildEvolutionBar();

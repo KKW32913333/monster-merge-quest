@@ -1269,3 +1269,32 @@ button {
   border: none; color: #fff; font-weight: bold; border-radius: 12px;
   box-shadow: 0 3px 0 var(--shadow-solid-secondary);
 }
+
+/* ===== 横向き警告オーバーレイ ===== */
+#rotate-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg-void, #0c0712);
+  flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 24px; gap: 10px;
+}
+#rotate-icon {
+  font-size: 3rem;
+  animation: rotateHint 1.6s ease-in-out infinite;
+}
+@keyframes rotateHint {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(90deg); }
+}
+#rotate-text {
+  font-size: 1.1rem; font-weight: bold; color: var(--accent-gold-bright, #ffd873);
+}
+#rotate-sub {
+  font-size: 0.8rem; color: var(--text-dim, #b39fce);
+}
+
+/* スマホを横向きにした時だけ表示（PCの横長ウィンドウでは反応しないよう高さで判定） */
+@media (orientation: landscape) and (max-height: 500px) {
+  #rotate-overlay { display: flex; }
+  #app { visibility: hidden; }
+}
